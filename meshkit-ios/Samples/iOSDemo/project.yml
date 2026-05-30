@@ -1,0 +1,66 @@
+name: MeshKitiOSDemo
+options:
+  bundleIdPrefix: ai.meshkit.sample
+  deploymentTarget:
+    iOS: "15.0"
+packages:
+  MeshKit:
+    path: ../..
+targets:
+  HermesChat:
+    type: application
+    platform: iOS
+    sources: [HermesChat]
+    dependencies:
+      - package: MeshKit
+    settings:
+      base:
+        INFOPLIST_FILE: HermesChat/Info.plist
+        PRODUCT_BUNDLE_IDENTIFIER: ai.meshkit.sample.hermeschat
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+  MintNotes:
+    type: application
+    platform: iOS
+    sources: [MintNotes]
+    dependencies:
+      - package: MeshKit
+    settings:
+      base:
+        INFOPLIST_FILE: MintNotes/Info.plist
+        PRODUCT_BUNDLE_IDENTIFIER: ai.meshkit.sample.mintnotes
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+  DailyMart:
+    type: application
+    platform: iOS
+    sources: [DailyMart]
+    dependencies:
+      - package: MeshKit
+    settings:
+      base:
+        INFOPLIST_FILE: DailyMart/Info.plist
+        PRODUCT_BUNDLE_IDENTIFIER: ai.meshkit.sample.dailymart
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+  MeshKitiOSDemoUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [UITests]
+    dependencies:
+      - target: HermesChat
+      - target: MintNotes
+      - target: DailyMart
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: ai.meshkit.sample.uitests
+        TEST_TARGET_NAME: HermesChat
+        GENERATE_INFOPLIST_FILE: YES
+schemes:
+  MeshKitiOSDemoUITests:
+    build:
+      targets:
+        HermesChat: all
+        MintNotes: all
+        DailyMart: all
+        MeshKitiOSDemoUITests: [test]
+    test:
+      targets:
+        - name: MeshKitiOSDemoUITests

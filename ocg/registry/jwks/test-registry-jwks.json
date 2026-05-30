@@ -1,0 +1,14 @@
+{
+  "issuer": "https://registry.meshkit.ai",
+  "keys": [
+    {
+      "kid": "ocg-registry-test-2026-05",
+      "alg": "HS256-test-only",
+      "kty": "oct",
+      "k": "bWVzaGtpdC10ZXN0LXJlZ2lzdHJ5LXNpZ25pbmcta2V5LW5vdC1wcm9kdWN0aW9u",
+      "status": "active",
+      "not_before": "2026-05-01T00:00:00Z",
+      "not_after": "2026-12-31T23:59:59Z"
+    }
+  ]
+}

@@ -1,0 +1,682 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MeshKit x maroo | Elevator Pitch</title>
+  <style>
+    :root {
+      --ink: #111827;
+      --muted: #5b6475;
+      --line: #d8dde8;
+      --paper: #f7f8fb;
+      --white: #ffffff;
+      --aqua: #0f9f9a;
+      --blue: #2563eb;
+      --lime: #a3e635;
+      --pink: #f472b6;
+      --amber: #f59e0b;
+      --shadow: 0 24px 70px rgba(17, 24, 39, 0.13);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+      background:
+        radial-gradient(circle at 10% 0%, rgba(15, 159, 154, 0.16), transparent 32rem),
+        radial-gradient(circle at 100% 12%, rgba(244, 114, 182, 0.16), transparent 30rem),
+        linear-gradient(180deg, #fbfcff 0%, #eef2f7 100%);
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .deck {
+      scroll-snap-type: y mandatory;
+      overflow-y: auto;
+      height: 100vh;
+    }
+
+    .slide {
+      position: relative;
+      min-height: 100vh;
+      scroll-snap-align: start;
+      display: grid;
+      place-items: center;
+      padding: 40px 56px;
+      overflow: hidden;
+    }
+
+    .slide-inner {
+      width: min(1180px, 100%);
+      display: grid;
+      grid-template-columns: minmax(0, 1.02fr) minmax(320px, 0.98fr);
+      gap: 48px;
+      align-items: center;
+    }
+
+    .kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin: 0 0 16px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .kicker::before {
+      content: "";
+      width: 36px;
+      height: 2px;
+      background: currentColor;
+    }
+
+    h1,
+    h2 {
+      margin: 0;
+      max-width: 820px;
+      color: #0b1220;
+      font-size: clamp(40px, 5.6vw, 72px);
+      line-height: 1.03;
+      letter-spacing: 0;
+    }
+
+    h2 {
+      font-size: clamp(32px, 3.9vw, 50px);
+      line-height: 1.03;
+    }
+
+    .lead {
+      margin: 22px 0 0;
+      max-width: 720px;
+      color: #394152;
+      font-size: clamp(18px, 1.85vw, 24px);
+      line-height: 1.34;
+      font-weight: 680;
+    }
+
+    .sub {
+      margin: 18px 0 0;
+      max-width: 650px;
+      color: var(--muted);
+      font-size: 17px;
+      line-height: 1.62;
+    }
+
+    .tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 22px;
+    }
+
+    .tag {
+      min-height: 38px;
+      display: inline-flex;
+      align-items: center;
+      padding: 8px 13px;
+      border: 1px solid rgba(17, 24, 39, 0.12);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.72);
+      color: #263143;
+      font-size: 14px;
+      font-weight: 760;
+      box-shadow: 0 10px 30px rgba(17, 24, 39, 0.06);
+    }
+
+    .device-stage {
+      position: relative;
+      min-height: 600px;
+      display: grid;
+      place-items: center;
+    }
+
+    .phone {
+      position: relative;
+      width: min(330px, 78vw);
+      aspect-ratio: 0.5;
+      padding: 18px;
+      border: 10px solid #111827;
+      border-radius: 42px;
+      background: #f9fbff;
+      box-shadow: var(--shadow);
+      transform: rotate(-4deg);
+    }
+
+    .phone::before {
+      content: "";
+      position: absolute;
+      top: 12px;
+      left: 50%;
+      width: 88px;
+      height: 24px;
+      border-radius: 999px;
+      background: #111827;
+      transform: translateX(-50%);
+    }
+
+    .app-grid {
+      height: 100%;
+      padding-top: 44px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-auto-rows: 78px;
+      gap: 10px;
+      align-content: start;
+    }
+
+    .app-icon {
+      border-radius: 20px;
+      background: linear-gradient(140deg, #ffffff, #dfe9f8);
+      border: 1px solid rgba(17, 24, 39, 0.1);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 14px 28px rgba(37, 99, 235, 0.1);
+    }
+
+    .app-icon:nth-child(2n) {
+      background: linear-gradient(140deg, #ecfeff, #a7f3d0);
+    }
+
+    .app-icon:nth-child(3n) {
+      background: linear-gradient(140deg, #fff7ed, #fed7aa);
+    }
+
+    .command-layer {
+      position: absolute;
+      right: 6%;
+      bottom: 8%;
+      width: min(370px, 70vw);
+      padding: 22px;
+      border: 1px solid rgba(17, 24, 39, 0.14);
+      border-radius: 6px;
+      background: rgba(17, 24, 39, 0.92);
+      color: #f9fafb;
+      box-shadow: var(--shadow);
+    }
+
+    .prompt {
+      color: #9ca3af;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .command-layer strong {
+      display: block;
+      margin-top: 10px;
+      font-size: 23px;
+      line-height: 1.23;
+    }
+
+    .command-layer span {
+      display: block;
+      margin-top: 13px;
+      color: #cbd5e1;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .mesh-visual {
+      position: relative;
+      min-height: 620px;
+      display: grid;
+      place-items: center;
+    }
+
+    .mesh-ring {
+      position: relative;
+      width: min(480px, 76vw);
+      aspect-ratio: 1;
+      border-radius: 50%;
+      border: 1px solid rgba(17, 24, 39, 0.12);
+      background:
+        radial-gradient(circle, rgba(255, 255, 255, 0.9) 0 26%, transparent 27%),
+        conic-gradient(from 220deg, rgba(15, 159, 154, 0.22), rgba(37, 99, 235, 0.2), rgba(244, 114, 182, 0.18), rgba(245, 158, 11, 0.2), rgba(15, 159, 154, 0.22));
+      box-shadow: var(--shadow);
+    }
+
+    .mesh-ring::before,
+    .mesh-ring::after {
+      content: "";
+      position: absolute;
+      inset: 18%;
+      border-radius: 50%;
+      border: 1px dashed rgba(17, 24, 39, 0.25);
+    }
+
+    .mesh-ring::after {
+      inset: 34%;
+      border-style: solid;
+      background: #ffffff;
+      box-shadow: inset 0 0 0 1px rgba(17, 24, 39, 0.06);
+    }
+
+    .node {
+      position: absolute;
+      display: grid;
+      place-items: center;
+      width: 104px;
+      height: 74px;
+      border: 1px solid rgba(17, 24, 39, 0.16);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.88);
+      color: #1f2937;
+      font-size: 13px;
+      font-weight: 850;
+      box-shadow: 0 18px 45px rgba(17, 24, 39, 0.12);
+      text-align: center;
+    }
+
+    .node.agent {
+      top: 5%;
+      left: 50%;
+      transform: translateX(-50%);
+      border-color: rgba(37, 99, 235, 0.4);
+    }
+
+    .node.chat {
+      top: 37%;
+      left: 2%;
+    }
+
+    .node.notes {
+      top: 37%;
+      right: 2%;
+    }
+
+    .node.wallet {
+      left: 50%;
+      bottom: 5%;
+      transform: translateX(-50%);
+      border-color: rgba(15, 159, 154, 0.45);
+    }
+
+    .center-label {
+      position: absolute;
+      inset: 38%;
+      display: grid;
+      place-items: center;
+      color: #0f172a;
+      font-size: 18px;
+      font-weight: 900;
+      text-align: center;
+    }
+
+    .steps {
+      display: grid;
+      gap: 14px;
+      margin-top: 30px;
+      max-width: 700px;
+    }
+
+    .step {
+      display: grid;
+      grid-template-columns: 34px minmax(0, 1fr);
+      gap: 12px;
+      align-items: start;
+      padding: 11px 0;
+      border-top: 1px solid var(--line);
+    }
+
+    .num {
+      display: grid;
+      place-items: center;
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: #111827;
+      color: #ffffff;
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .step strong {
+      display: block;
+      font-size: 16px;
+      line-height: 1.35;
+    }
+
+    .step span {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .api-board {
+      display: grid;
+      gap: 14px;
+    }
+
+    .api-card {
+      display: grid;
+      grid-template-columns: 136px minmax(0, 1fr);
+      gap: 14px;
+      align-items: start;
+      padding: 17px;
+      border: 1px solid rgba(17, 24, 39, 0.12);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.78);
+      box-shadow: 0 18px 42px rgba(17, 24, 39, 0.08);
+    }
+
+    .api-card b {
+      color: #111827;
+      font-size: 15px;
+    }
+
+    .api-card code {
+      display: block;
+      overflow-wrap: anywhere;
+      color: #334155;
+      font-family: "SFMono-Regular", Consolas, ui-monospace, monospace;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .api-card span {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .maroo-stack {
+      margin-top: 28px;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .stack-item {
+      min-height: 116px;
+      padding: 16px;
+      border: 1px solid rgba(17, 24, 39, 0.12);
+      border-radius: 8px;
+      background: #ffffff;
+    }
+
+    .stack-item strong {
+      display: block;
+      font-size: 15px;
+    }
+
+    .stack-item span {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .slide-nav {
+      position: fixed;
+      z-index: 10;
+      top: 50%;
+      right: 20px;
+      display: grid;
+      gap: 10px;
+      transform: translateY(-50%);
+    }
+
+    .slide-nav a {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      border: 1px solid rgba(17, 24, 39, 0.28);
+      background: rgba(255, 255, 255, 0.82);
+      box-shadow: 0 6px 18px rgba(17, 24, 39, 0.12);
+    }
+
+    .source {
+      position: absolute;
+      left: 56px;
+      bottom: 28px;
+      color: rgba(17, 24, 39, 0.52);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .source a {
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    @media (max-width: 880px) {
+      .slide {
+        padding: 36px 22px 54px;
+      }
+
+      .slide-inner {
+        grid-template-columns: 1fr;
+        gap: 30px;
+      }
+
+      .device-stage,
+      .mesh-visual {
+        min-height: 430px;
+      }
+
+      .command-layer {
+        right: 0;
+        bottom: 0;
+      }
+
+      .maroo-stack {
+        grid-template-columns: 1fr;
+      }
+
+      .api-card {
+        grid-template-columns: 1fr;
+      }
+
+      .slide-nav {
+        top: auto;
+        right: 50%;
+        bottom: 14px;
+        grid-auto-flow: column;
+        transform: translateX(50%);
+      }
+
+      .source {
+        display: none;
+      }
+    }
+
+    @media print {
+      body {
+        background: #ffffff;
+      }
+
+      .deck {
+        height: auto;
+        overflow: visible;
+      }
+
+      .slide {
+        min-height: 100vh;
+        break-after: page;
+      }
+
+      .slide-nav {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <nav class="slide-nav" aria-label="Slides">
+    <a href="#slide-1" aria-label="1"></a>
+    <a href="#slide-2" aria-label="2"></a>
+    <a href="#slide-3" aria-label="3"></a>
+  </nav>
+
+  <main class="deck">
+    <section class="slide" id="slide-1">
+      <div class="slide-inner">
+        <div>
+          <p class="kicker">01 / Closed assistants</p>
+          <h1>AI should not become another OS lock-in.</h1>
+          <p class="lead">Gemini와 Apple Intelligence는 AI가 앱을 호출해야 한다는 방향을 보여준다.</p>
+          <p class="sub">하지만 그 통합은 각자의 OS와 생태계 안에서 강해진다. Android, iOS, Google Workspace 중심의 자동화는 편리하지만, 모든 앱이 OS를 넘어 서로를 발견하고 호출하는 개방형 표준은 아니다.</p>
+          <div class="tag-row">
+            <span class="tag">Android lock-in</span>
+            <span class="tag">iOS lock-in</span>
+            <span class="tag">Screen automation</span>
+            <span class="tag">Platform APIs</span>
+          </div>
+        </div>
+
+        <div class="device-stage" aria-hidden="true">
+          <div class="phone">
+            <div class="app-grid">
+              <i class="app-icon"></i>
+              <i class="app-icon"></i>
+              <i class="app-icon"></i>
+              <i class="app-icon"></i>
+              <i class="app-icon"></i>
+              <i class="app-icon"></i>
+              <i class="app-icon"></i>
+              <i class="app-icon"></i>
+              <i class="app-icon"></i>
+            </div>
+          </div>
+          <div class="command-layer">
+            <div class="prompt">New primitive</div>
+            <strong>AI era needs apps that call,<br>not just apps that answer.</strong>
+            <span>앱 호출의 미래를 특정 OS 사업자나 슈퍼앱에만 맡길 수 없다.</span>
+          </div>
+        </div>
+      </div>
+      <div class="source">Source: <a href="https://github.com/Q00/meshkit">Q00/meshkit</a></div>
+    </section>
+
+    <section class="slide" id="slide-2">
+      <div class="slide-inner">
+        <div>
+          <p class="kicker">02 / MeshKit</p>
+          <h2>Apps become callers, not just endpoints.</h2>
+          <p class="lead">MeshKit은 OS-agnostic App-to-App MCP 프로토콜이다. 설치된 앱이 capability를 공개하는 callee이면서, 다른 앱의 MCP 로직을 호출하는 caller가 된다.</p>
+          <div class="steps">
+            <div class="step">
+              <div class="num">1</div>
+              <div>
+                <strong>Caller and callee apps</strong>
+                <span>앱은 endpoint를 넘어 다른 앱의 capability를 호출하는 실행 주체가 된다.</span>
+              </div>
+            </div>
+            <div class="step">
+              <div class="num">2</div>
+              <div>
+                <strong>Business logic as capability</strong>
+                <span>서버 전체가 아니라 허용된 MCP business logic만 공개하고 호출한다.</span>
+              </div>
+            </div>
+            <div class="step">
+              <div class="num">3</div>
+              <div>
+                <strong>No central super app needed</strong>
+                <span>각 앱이 자기 관심사에 맞춰 에이전트를 붙이고 워크플로우를 만든다.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="mesh-visual" aria-hidden="true">
+          <div class="mesh-ring">
+            <div class="node agent">Commerce<br>Caller</div>
+            <div class="node chat">Notes<br>Callee</div>
+            <div class="node notes">Calendar<br>Callee</div>
+            <div class="node wallet">Wallet<br>Callee</div>
+            <div class="center-label">MCP<br>Logic</div>
+          </div>
+        </div>
+      </div>
+      <div class="source">Core claim: every installed app can become a trusted MCP caller and callee</div>
+    </section>
+
+    <section class="slide" id="slide-3">
+      <div class="slide-inner">
+        <div>
+          <p class="kicker">03 / maroo demo</p>
+          <h2>Verifiable calls. OKRW payments. Agent wallets.</h2>
+          <p class="lead">maroo는 앱이 caller가 되는 MeshKit의 실행 그래프를 검증 가능한 데모로 보여주게 해준다.</p>
+          <p class="sub">예를 들어 커머스 앱이 지갑 앱의 결제 capability를 호출하고, 노트 앱의 기록 capability를 호출한다. maroo는 OKRW 결제, Agent Wallet Kit, 정책 기반 송금 차단, signed receipt를 연결해 이 흐름을 증명한다.</p>
+
+          <div class="maroo-stack">
+            <div class="stack-item">
+              <strong>App call graph</strong>
+              <span>앱이 caller/callee가 되는 호출 그래프를 검증</span>
+            </div>
+            <div class="stack-item">
+              <strong>OKRW payment</strong>
+              <span>원화 스테이블 테스트 토큰으로 결제·송금까지 연결</span>
+            </div>
+            <div class="stack-item">
+              <strong>Agent Wallet Kit</strong>
+              <span>에이전트 지갑과 정책 기반 차단을 MCP 호출에 연결</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="api-board" aria-label="maroo demo loop">
+          <div class="api-card">
+            <b>1. Discover</b>
+            <div>
+              <code>Local app discovery</code>
+              <span>호출 가능한 앱과 MCP capability를 로컬에서 발견</span>
+            </div>
+          </div>
+          <div class="api-card">
+            <b>2. Call</b>
+            <div>
+              <code>App as caller</code>
+              <span>커머스·노트·지갑 앱이 서로의 MCP business logic을 호출</span>
+            </div>
+          </div>
+          <div class="api-card">
+            <b>3. Consent</b>
+            <div>
+              <code>Target app boundary</code>
+              <span>동의와 실행은 중앙 슈퍼앱이 아니라 타깃 앱 내부에서 처리</span>
+            </div>
+          </div>
+          <div class="api-card">
+            <b>4. Pay</b>
+            <div>
+              <code>OKRW + Agent Wallet</code>
+              <span>정책 한도, 허용 주소, Mock KYC로 송금 전 차단까지 시연</span>
+            </div>
+          </div>
+          <div class="api-card">
+            <b>5. Verify</b>
+            <div>
+              <code>Receipt hash + Indexer</code>
+              <span>결과 영수증과 결제 상태를 누구나 확인 가능한 흐름으로 연결</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="source">Docs: <a href="https://docs.maroo.io">docs.maroo.io</a> · Agent: <a href="https://agent.maroo.io">agent.maroo.io</a></div>
+    </section>
+  </main>
+</body>
+</html>

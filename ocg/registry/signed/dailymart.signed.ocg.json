@@ -1,0 +1,82 @@
+{
+  "ocg_version": "0.1",
+  "app": {
+    "app_id": "ai.meshkit.sample.dailymart",
+    "display_name": "DailyMart",
+    "platform": "android",
+    "package_name": "ai.meshkit.sample.dailymart",
+    "publisher": "MeshKit Samples",
+    "verified": true
+  },
+  "capabilities": [
+    {
+      "id": "grocery.purchase_essentials",
+      "version": "1.0",
+      "description": "Purchase household essentials using user-approved address and wallet permissions.",
+      "risk": "spend:money",
+      "consent": "budgeted_per_invocation",
+      "input_schema": {
+        "type": "object",
+        "required": [
+          "items",
+          "max_budget_krw",
+          "delivery_window",
+          "payment_method"
+        ],
+        "properties": {
+          "items": {
+            "type": "array"
+          },
+          "max_budget_krw": {
+            "type": "integer"
+          },
+          "delivery_window": {
+            "type": "string"
+          },
+          "payment_method": {
+            "type": "string"
+          }
+        }
+      },
+      "result_schema": {
+        "type": "object",
+        "required": [
+          "status",
+          "order_id"
+        ],
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "order_id": {
+            "type": "string"
+          },
+          "purchased_items": {
+            "type": "string"
+          }
+        }
+      },
+      "android": {
+        "action": "ai.meshkit.action.INVOKE_CAPABILITY",
+        "target_activity": "ai.meshkit.sample.dailymart.PurchaseInvokeActivity"
+      }
+    }
+  ],
+  "trust": {
+    "package_signature_sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    "publisher_domain": "meshkit.ai",
+    "verification_state": "registry_verified",
+    "request_signing": {
+      "alg": "SHA256withRSA",
+      "key_id": "meshkit-prod-2026-05",
+      "public_key_base64": "TEST_PUBLIC_KEY_BASE64"
+    }
+  },
+  "registry_signature": {
+    "alg": "HS256-test-only",
+    "kid": "ocg-registry-test-2026-05",
+    "canonicalization": "ocg-canonical-json/v1",
+    "issued_at": "2026-05-17T00:00:00Z",
+    "value": "E-78amsHVHllpWaam2P7X4_l2Rf_z3zz19AnuPAqYnQ"
+  }
+}

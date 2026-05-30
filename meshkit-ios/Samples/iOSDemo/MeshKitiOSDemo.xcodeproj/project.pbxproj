@@ -1,0 +1,647 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		038EEB81E9A30259AD905516 /* MeshKit in Frameworks */ = {isa = PBXBuildFile; productRef = E7E37B3721BE01F6594C811D /* MeshKit */; };
+		212E36C906960376A4B80AED /* DailyMartApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EC0B24D561B5E29148C89D1 /* DailyMartApp.swift */; };
+		24E79DE270B03F45EECCC683 /* MeshKitiOSDemoUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F94E3A7720094A80EB38973 /* MeshKitiOSDemoUITests.swift */; };
+		32262C03C83C8A8DAADA03F4 /* MintNotesApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 626681DC58B2525BC0190BE8 /* MintNotesApp.swift */; };
+		68FFA76D610FA1DD685BBFBB /* MeshKit in Frameworks */ = {isa = PBXBuildFile; productRef = 17706670C2913366510185E1 /* MeshKit */; };
+		956C4AAB64C20D1643DC3573 /* MeshKit in Frameworks */ = {isa = PBXBuildFile; productRef = 4505392AB1B44147B12448C0 /* MeshKit */; };
+		DD6C2F1D1532134F43A5FB67 /* HermesChatApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3B9642B4438922AA0F9FA1D /* HermesChatApp.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		AD30662C2A5990A69A3606E2 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 498B5AF9F772A1CC00C87D07 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 453097FF10D76CE8FAFE5ED6;
+			remoteInfo = DailyMart;
+		};
+		E40CA7858701434FCBA99EE4 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 498B5AF9F772A1CC00C87D07 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 2CECB95171B08FCB9B4BA0EC;
+			remoteInfo = MintNotes;
+		};
+		EDA7C294D1C779B962CC3CDC /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 498B5AF9F772A1CC00C87D07 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = AD7EC3A2DAF244F6A91A5832;
+			remoteInfo = HermesChat;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		034EDA6D0981D295CD3C1731 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		4F94E3A7720094A80EB38973 /* MeshKitiOSDemoUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeshKitiOSDemoUITests.swift; sourceTree = "<group>"; };
+		552D47FBA0F618BC678C59B3 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		626681DC58B2525BC0190BE8 /* MintNotesApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MintNotesApp.swift; sourceTree = "<group>"; };
+		6EC0B24D561B5E29148C89D1 /* DailyMartApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyMartApp.swift; sourceTree = "<group>"; };
+		7F34D4D5C7A68F0F86DB18F1 /* MeshKitiOSDemoUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = MeshKitiOSDemoUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		AAD89A8266EDCB88D7FA7860 /* MintNotes.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = MintNotes.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B3B9642B4438922AA0F9FA1D /* HermesChatApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HermesChatApp.swift; sourceTree = "<group>"; };
+		D3F055EEECC98994734ACB37 /* HermesChat.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = HermesChat.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		E84FCE39C560892DE865FD42 /* meshkit-ios */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "meshkit-ios"; path = ../..; sourceTree = SOURCE_ROOT; };
+		EF493B430D3CB91D2D347883 /* DailyMart.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = DailyMart.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		F6CA405026415FC4B28CB7FB /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		71FE6C76A2E55982B78F7000 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				038EEB81E9A30259AD905516 /* MeshKit in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7EC98D0D25B2F7E6434ABA5F /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				68FFA76D610FA1DD685BBFBB /* MeshKit in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8F0F1F32E4884A915C45A77B /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				956C4AAB64C20D1643DC3573 /* MeshKit in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		17108341A695B63D96C2D2E9 /* UITests */ = {
+			isa = PBXGroup;
+			children = (
+				4F94E3A7720094A80EB38973 /* MeshKitiOSDemoUITests.swift */,
+			);
+			path = UITests;
+			sourceTree = "<group>";
+		};
+		2B330A82C175FC353381EA0D /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				E84FCE39C560892DE865FD42 /* meshkit-ios */,
+			);
+			name = Packages;
+			sourceTree = "<group>";
+		};
+		34FC7C8AD7B7A9121B06D83B = {
+			isa = PBXGroup;
+			children = (
+				FE8293F23EF85CA5B405C89E /* DailyMart */,
+				FA019CBABE240F776CC8D5B8 /* HermesChat */,
+				3CDA1C56F96C4AAB2B435983 /* MintNotes */,
+				2B330A82C175FC353381EA0D /* Packages */,
+				17108341A695B63D96C2D2E9 /* UITests */,
+				D963AC630DC5FCC66BFB828C /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		3CDA1C56F96C4AAB2B435983 /* MintNotes */ = {
+			isa = PBXGroup;
+			children = (
+				034EDA6D0981D295CD3C1731 /* Info.plist */,
+				626681DC58B2525BC0190BE8 /* MintNotesApp.swift */,
+			);
+			path = MintNotes;
+			sourceTree = "<group>";
+		};
+		D963AC630DC5FCC66BFB828C /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				EF493B430D3CB91D2D347883 /* DailyMart.app */,
+				D3F055EEECC98994734ACB37 /* HermesChat.app */,
+				7F34D4D5C7A68F0F86DB18F1 /* MeshKitiOSDemoUITests.xctest */,
+				AAD89A8266EDCB88D7FA7860 /* MintNotes.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		FA019CBABE240F776CC8D5B8 /* HermesChat */ = {
+			isa = PBXGroup;
+			children = (
+				B3B9642B4438922AA0F9FA1D /* HermesChatApp.swift */,
+				F6CA405026415FC4B28CB7FB /* Info.plist */,
+			);
+			path = HermesChat;
+			sourceTree = "<group>";
+		};
+		FE8293F23EF85CA5B405C89E /* DailyMart */ = {
+			isa = PBXGroup;
+			children = (
+				6EC0B24D561B5E29148C89D1 /* DailyMartApp.swift */,
+				552D47FBA0F618BC678C59B3 /* Info.plist */,
+			);
+			path = DailyMart;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		2CECB95171B08FCB9B4BA0EC /* MintNotes */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C7D622AEFBC330B441D4BE73 /* Build configuration list for PBXNativeTarget "MintNotes" */;
+			buildPhases = (
+				AF88654CD6447C9F7F59E8B5 /* Sources */,
+				71FE6C76A2E55982B78F7000 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = MintNotes;
+			packageProductDependencies = (
+				E7E37B3721BE01F6594C811D /* MeshKit */,
+			);
+			productName = MintNotes;
+			productReference = AAD89A8266EDCB88D7FA7860 /* MintNotes.app */;
+			productType = "com.apple.product-type.application";
+		};
+		453097FF10D76CE8FAFE5ED6 /* DailyMart */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 901E9624C383FADB13E372ED /* Build configuration list for PBXNativeTarget "DailyMart" */;
+			buildPhases = (
+				FD1EA05DD5B2ACD528DE388E /* Sources */,
+				7EC98D0D25B2F7E6434ABA5F /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = DailyMart;
+			packageProductDependencies = (
+				17706670C2913366510185E1 /* MeshKit */,
+			);
+			productName = DailyMart;
+			productReference = EF493B430D3CB91D2D347883 /* DailyMart.app */;
+			productType = "com.apple.product-type.application";
+		};
+		5157483EF0FA02C14196A574 /* MeshKitiOSDemoUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4D189F19D9E32440FAD48FFD /* Build configuration list for PBXNativeTarget "MeshKitiOSDemoUITests" */;
+			buildPhases = (
+				D9B8589E4204D929C13B77DB /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				5620C61B3D0422DE97BF6D49 /* PBXTargetDependency */,
+				0B488A30083D0F2EE5341945 /* PBXTargetDependency */,
+				F373652D4C3A81A085FDFFDB /* PBXTargetDependency */,
+			);
+			name = MeshKitiOSDemoUITests;
+			packageProductDependencies = (
+			);
+			productName = MeshKitiOSDemoUITests;
+			productReference = 7F34D4D5C7A68F0F86DB18F1 /* MeshKitiOSDemoUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		AD7EC3A2DAF244F6A91A5832 /* HermesChat */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 21E6F6644ABF2185E052C74B /* Build configuration list for PBXNativeTarget "HermesChat" */;
+			buildPhases = (
+				8C1848788F89EDE2460078CB /* Sources */,
+				8F0F1F32E4884A915C45A77B /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = HermesChat;
+			packageProductDependencies = (
+				4505392AB1B44147B12448C0 /* MeshKit */,
+			);
+			productName = HermesChat;
+			productReference = D3F055EEECC98994734ACB37 /* HermesChat.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		498B5AF9F772A1CC00C87D07 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					5157483EF0FA02C14196A574 = {
+						TestTargetID = AD7EC3A2DAF244F6A91A5832;
+					};
+				};
+			};
+			buildConfigurationList = 3A89C26F3EC72A407309DE06 /* Build configuration list for PBXProject "MeshKitiOSDemo" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 34FC7C8AD7B7A9121B06D83B;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				000DB557E72DDAEA8C54CBC2 /* XCLocalSwiftPackageReference "../.." */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = D963AC630DC5FCC66BFB828C /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				453097FF10D76CE8FAFE5ED6 /* DailyMart */,
+				AD7EC3A2DAF244F6A91A5832 /* HermesChat */,
+				5157483EF0FA02C14196A574 /* MeshKitiOSDemoUITests */,
+				2CECB95171B08FCB9B4BA0EC /* MintNotes */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		8C1848788F89EDE2460078CB /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				DD6C2F1D1532134F43A5FB67 /* HermesChatApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AF88654CD6447C9F7F59E8B5 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				32262C03C83C8A8DAADA03F4 /* MintNotesApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D9B8589E4204D929C13B77DB /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				24E79DE270B03F45EECCC683 /* MeshKitiOSDemoUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FD1EA05DD5B2ACD528DE388E /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				212E36C906960376A4B80AED /* DailyMartApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		0B488A30083D0F2EE5341945 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 2CECB95171B08FCB9B4BA0EC /* MintNotes */;
+			targetProxy = E40CA7858701434FCBA99EE4 /* PBXContainerItemProxy */;
+		};
+		5620C61B3D0422DE97BF6D49 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = AD7EC3A2DAF244F6A91A5832 /* HermesChat */;
+			targetProxy = EDA7C294D1C779B962CC3CDC /* PBXContainerItemProxy */;
+		};
+		F373652D4C3A81A085FDFFDB /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 453097FF10D76CE8FAFE5ED6 /* DailyMart */;
+			targetProxy = AD30662C2A5990A69A3606E2 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		3315C8D12D6C174EDB737526 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = HermesChat/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = ai.meshkit.sample.hermeschat;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		4D25F5E631D24D1EFE146780 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = HermesChat/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = ai.meshkit.sample.hermeschat;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		54FD4CD2C88E35DE9A9E7CE9 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = MintNotes/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = ai.meshkit.sample.mintnotes;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		5DF8EBC8C2C6BFA6A423A18D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = DailyMart/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = ai.meshkit.sample.dailymart;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		6170CB104FC9F757BCC46262 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = MintNotes/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = ai.meshkit.sample.mintnotes;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		73F123C6D676E7A34A6EF684 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = DailyMart/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = ai.meshkit.sample.dailymart;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		A52C7FC7FA5571334493E32A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		AC90CE80205211678BBA6612 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		E31AA193AB00AE5FCF4F179F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = ai.meshkit.sample.uitests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = HermesChat;
+			};
+			name = Release;
+		};
+		E5C1CD65DBEFC474EE691310 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = ai.meshkit.sample.uitests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = HermesChat;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		21E6F6644ABF2185E052C74B /* Build configuration list for PBXNativeTarget "HermesChat" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				3315C8D12D6C174EDB737526 /* Debug */,
+				4D25F5E631D24D1EFE146780 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		3A89C26F3EC72A407309DE06 /* Build configuration list for PBXProject "MeshKitiOSDemo" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AC90CE80205211678BBA6612 /* Debug */,
+				A52C7FC7FA5571334493E32A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		4D189F19D9E32440FAD48FFD /* Build configuration list for PBXNativeTarget "MeshKitiOSDemoUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E5C1CD65DBEFC474EE691310 /* Debug */,
+				E31AA193AB00AE5FCF4F179F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		901E9624C383FADB13E372ED /* Build configuration list for PBXNativeTarget "DailyMart" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5DF8EBC8C2C6BFA6A423A18D /* Debug */,
+				73F123C6D676E7A34A6EF684 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		C7D622AEFBC330B441D4BE73 /* Build configuration list for PBXNativeTarget "MintNotes" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6170CB104FC9F757BCC46262 /* Debug */,
+				54FD4CD2C88E35DE9A9E7CE9 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		000DB557E72DDAEA8C54CBC2 /* XCLocalSwiftPackageReference "../.." */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../..;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		17706670C2913366510185E1 /* MeshKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = MeshKit;
+		};
+		4505392AB1B44147B12448C0 /* MeshKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = MeshKit;
+		};
+		E7E37B3721BE01F6594C811D /* MeshKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = MeshKit;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 498B5AF9F772A1CC00C87D07 /* Project object */;
+}

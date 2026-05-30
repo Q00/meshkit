@@ -1,0 +1,46 @@
+{
+  "ocg_version": "0.1",
+  "app": {
+    "app_id": "ai.meshkit.sample.notes",
+    "display_name": "Mint Notes",
+    "platform": "android",
+    "package_name": "ai.meshkit.sample.notes",
+    "publisher": "MeshKit Samples",
+    "verified": false
+  },
+  "capabilities": [
+    {
+      "id": "notes.append_note",
+      "version": "1.0",
+      "description": "Append text to a user-selected note.",
+      "risk": "write:user_content",
+      "consent": "per_invocation",
+      "input_schema": {
+        "type": "object",
+        "required": ["note_ref", "text"],
+        "properties": {
+          "note_ref": { "type": "string" },
+          "text": { "type": "string" }
+        }
+      },
+      "result_schema": {
+        "type": "object",
+        "required": ["status", "note_ref"],
+        "properties": {
+          "status": { "type": "string" },
+          "note_ref": { "type": "string" },
+          "saved_text": { "type": "string" }
+        }
+      },
+      "android": {
+        "action": "ai.meshkit.action.INVOKE_CAPABILITY",
+        "target_activity": "ai.meshkit.sample.notes.McpInvokeActivity"
+      }
+    }
+  ],
+  "trust": {
+    "package_signature_sha256": "dev-sample",
+    "publisher_domain": "meshkit.ai",
+    "verification_state": "unverified_dev_sample"
+  }
+}
