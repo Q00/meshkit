@@ -23,6 +23,7 @@ let ethersModulePromise = null;
 
 const server = http.createServer(async (req, res) => {
   try {
+    logRequest(req);
     if (req.method === "GET" && req.url === "/health") {
       const health = {
         service: "meshkit-maroo-native-okrw-transfer-bridge",
@@ -75,6 +76,12 @@ const server = http.createServer(async (req, res) => {
 server.listen(PORT, HOST, () => {
   console.error(`meshkit maroo native OKRW transfer bridge listening on http://${HOST}:${PORT}`);
 });
+
+function logRequest(req) {
+  const remoteAddress = req.socket?.remoteAddress || "unknown";
+  const safeURL = req.url === "/health" ? "/health" : req.url === "/transfer" ? "/transfer" : req.url || "/";
+  console.error(`[${new Date().toISOString()}] ${req.method} ${safeURL} from ${remoteAddress}`);
+}
 
 async function sendNativeOKRW(args) {
   const { JsonRpcProvider, Wallet, parseEther } = await importEthers();

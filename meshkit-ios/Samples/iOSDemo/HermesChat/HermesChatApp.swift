@@ -251,18 +251,26 @@ struct HermesChatApp: App {
     }
 
     private func refreshMarooWalletBalanceIfAvailable() async {
-        guard let healthURL = MarooDemoWalletBalanceClient.healthURLFromEnvironment() else { return }
+        guard let healthURL = MarooDemoWalletBalanceClient.healthURLFromEnvironment() else {
+            NSLog("maroo.wallet_balance.health_skipped missing %@", MarooDemoWalletBalanceClient.transferURLKey)
+            return
+        }
+        NSLog("maroo.wallet_balance.health_fetch %@", healthURL.absoluteString)
         do {
             let balance = try await MarooDemoWalletBalanceClient.fetchBalance(from: healthURL)
             await MainActor.run {
                 if let updated = try? delegatedWallet.replacingFundedWalletBalance(balance) {
                     delegatedWallet = updated
+                    auditTrail = "maroo.wallet_balance.health_ok · live total wallet balance \(NSDecimalNumber(decimal: balance).stringValue) OKRW"
                 }
             }
+            NSLog("maroo.wallet_balance.health_ok %@", NSDecimalNumber(decimal: balance).stringValue)
         } catch {
+            NSLog("maroo.wallet_balance.health_failed %@", error.localizedDescription)
             await MainActor.run {
                 if lastAction == "Idle" {
-                    auditTrail = "maroo.wallet_balance.health_unavailable · using bundled demo balance · \(error.localizedDescription)"
+                    callbackText = "Maroo bridge balance unavailable. Check iPad Local Network permission and bridge URL."
+                    auditTrail = "maroo.wallet_balance.health_unavailable · total wallet balance hidden until live bridge health succeeds · \(error.localizedDescription)"
                 }
             }
         }
@@ -425,7 +433,7 @@ struct HermesChatApp: App {
 }
 
 private enum MarooDemoWalletBalanceClient {
-    private static let transferURLKey = "MESHKIT_MAROO_OKRW_TRANSFER_BRIDGE_URL"
+    static let transferURLKey = "MESHKIT_MAROO_OKRW_TRANSFER_BRIDGE_URL"
 
     static func healthURLFromEnvironment(
         environment: [String: String] = ProcessInfo.processInfo.environment

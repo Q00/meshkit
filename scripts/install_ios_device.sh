@@ -244,8 +244,10 @@ print(json.dumps(json.loads(sys.argv[1])["artifact"], indent=2, sort_keys=True))
 PY
   fi
   log "Launching $target on the iPad"
-  xcrun devicectl device process launch --device "$DEVICE_SELECTOR" "$bundle_id" \
+  xcrun devicectl device process launch --device "$DEVICE_SELECTOR" \
+    --terminate-existing \
     --environment-variables "$launch_env_json" \
+    "$bundle_id" \
     --json-output "$ARTIFACTS/$target-launch.json" \
     --log-output "$ARTIFACTS/$target-launch.log" \
     --timeout 60 || fail "$target install succeeded but launch failed; inspect $ARTIFACTS/$target-launch.log"

@@ -746,7 +746,6 @@ public struct MeshDelegatedWalletPolicyFormatter: Equatable, Sendable {
 public enum HermesChatDelegatedWalletViewModels {
     public static let dailyMartTargetBundleId = "ai.meshkit.sample.dailymart"
     public static let demoWalletAddress = "maroo1dailyMartAgentWallet"
-    public static let demoFundedWalletBalance = Decimal(string: "4997.622")!
 
     public static func viewModel(
         providerMetadata: MeshAgentWalletProviderMetadata,
@@ -774,7 +773,6 @@ public enum HermesChatDelegatedWalletViewModels {
                 adapterId: "maroo-testnet-agent-wallet-adapter"
             ),
             walletAddress: walletAddress,
-            fundedWalletBalance: demoFundedWalletBalance,
             policy: DailyMartDelegatedSpendingPolicy.expectedPolicy(expiresAt: expiresAt),
             targetBundleId: dailyMartTargetBundleId
         )
