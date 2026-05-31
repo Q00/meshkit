@@ -510,6 +510,9 @@ private struct HermesRootView: View {
 
             VStack(spacing: 0) {
                 chatHeader
+                if hasUserPrompt {
+                    pinnedDelegatedWalletPanel
+                }
 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 14) {
@@ -729,7 +732,6 @@ private struct HermesRootView: View {
                     Chip(text: "Home delivery", color: purple)
                     Chip(text: delegatedWallet.provider, color: .green)
                 }
-                delegatedWalletSummary
             }
         }
     }
@@ -785,8 +787,34 @@ private struct HermesRootView: View {
         }
     }
 
-    private var delegatedWalletSummary: some View {
-        DelegatedWalletPanel(snapshot: delegatedWallet.panelSnapshot)
+    private var pinnedDelegatedWalletPanel: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            HStack(spacing: 7) {
+                Image(systemName: "wallet.pass.fill")
+                    .font(.system(size: 12.5, weight: .black))
+                    .foregroundColor(orange)
+                Text("maroo OKRW delegated wallet")
+                    .font(.system(size: 12.5, weight: .black, design: .rounded))
+                    .foregroundColor(.primary)
+                Spacer(minLength: 8)
+                Text(delegatedWallet.panelSnapshot.remainingSessionLimitSummaryLine)
+                    .font(.system(size: 11, weight: .black, design: .rounded))
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.76)
+            }
+            DelegatedWalletPanel(snapshot: delegatedWallet.panelSnapshot)
+        }
+        .padding(.horizontal, 14)
+        .padding(.top, 8)
+        .padding(.bottom, 10)
+        .background(Color.white.opacity(0.88))
+        .overlay(alignment: .bottom) {
+            Rectangle()
+                .fill(Color.black.opacity(0.06))
+                .frame(height: 1)
+        }
+        .accessibilityLabel("Pinned maroo OKRW delegated wallet")
     }
 
     private var isDailyMartReceiptState: Bool {
