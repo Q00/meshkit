@@ -153,8 +153,10 @@ struct HermesChatApp: App {
                         }
                         isBackgroundProcessing = false
                         lastAction = orderState.lastAction
-                        callbackText = "\(presentation.title)\n\(presentation.body)"
-                        auditTrail = "Target-signed receipt accepted: \(presentation.auditLine)\nreceipt_token=\(receipt.token) · token_consumed=true · requestId/payloadHash/signature verified."
+                        let remainingLine = decrement?.wallet.panelSnapshot.remainingSessionLimitSummaryLine
+                            ?? delegatedWallet.panelSnapshot.remainingSessionLimitSummaryLine
+                        callbackText = "\(presentation.title)\n\(presentation.body)\n\(remainingLine)"
+                        auditTrail = "Target-signed receipt accepted: \(presentation.auditLine)\nreceipt_token=\(receipt.token) · token_consumed=true · requestId/payloadHash/signature verified · wallet_limit_updated=true."
                     }
                 } else {
                     isBackgroundProcessing = false
@@ -574,16 +576,17 @@ private struct HermesRootView: View {
             Text("What should Hermes call?")
                 .font(.system(size: 25, weight: .black, design: .rounded))
                 .foregroundColor(.primary)
-            Text("Type a request. Hermes maps it to callable apps, asks for safe foreground consent, then runs the actual MCP call in the background.")
+            Text("Hermes starts with a maroo OKRW delegated wallet. DailyMart can spend only inside this signed grant, and Hermes updates the remaining limit only after DailyMart returns a verified target-signed receipt.")
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
                 .lineSpacing(4)
                 .padding(.horizontal, 20)
+            delegatedWalletIntro
             VStack(alignment: .leading, spacing: 9) {
-                StepLine(done: false, text: "1. Type a request")
-                StepLine(done: false, text: "2. OCG analyzes callable apps")
-                StepLine(done: false, text: "3. Pick app → approve → background receipt")
+                StepLine(done: false, text: "1. Type a grocery request")
+                StepLine(done: false, text: "2. Hermes signs App2App MCP request")
+                StepLine(done: false, text: "3. DailyMart verifies → pays → returns balance")
             }
             .padding(14)
             .background(Color.white)
@@ -592,6 +595,28 @@ private struct HermesRootView: View {
         }
         .frame(maxWidth: .infinity)
         .accessibilityLabel("Empty chat")
+    }
+
+    private var delegatedWalletIntro: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                Image(systemName: "wallet.pass.fill")
+                    .font(.system(size: 15, weight: .black))
+                    .foregroundColor(orange)
+                Text("maroo OKRW delegated wallet")
+                    .font(.system(size: 15, weight: .black, design: .rounded))
+                    .foregroundColor(.primary)
+            }
+            Text("No private key or personal data is sent to DailyMart. The request carries scoped policy fields: merchant, capability, consent grant, amount, and nonce.")
+                .font(.system(size: 12.5, weight: .semibold))
+                .foregroundColor(.secondary)
+                .lineSpacing(3)
+            DelegatedWalletPanel(snapshot: delegatedWallet.panelSnapshot)
+        }
+        .padding(14)
+        .background(Color.white)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .accessibilityLabel("maroo OKRW delegated wallet intro")
     }
 
     private var ocgAnalysisMessage: some View {
@@ -626,7 +651,7 @@ private struct HermesRootView: View {
     private var assistantIntroMessage: some View {
         IncomingMessage(avatarTint: purple) {
             VStack(alignment: .leading, spacing: 8) {
-                Text("분석 완료. DailyMart가 이 요청을 처리할 수 있어. 아래 목록에서 실행할 앱을 골라줘.")
+                Text("분석 완료. DailyMart가 이 요청을 처리할 수 있어. Hermes가 signed App2App MCP request를 만들고, DailyMart가 검증한 뒤 OKRW 결제를 실행해.")
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(.primary)
                     .lineSpacing(3)
@@ -754,6 +779,9 @@ private struct HermesRootView: View {
                     .font(.system(size: 14.5, weight: .semibold))
                     .foregroundColor(.primary)
                     .lineSpacing(4)
+                if isDailyMartReceiptState {
+                    DelegatedWalletPanel(snapshot: delegatedWallet.panelSnapshot)
+                }
                 Text(auditTrail)
                     .font(.system(size: 11.5, weight: .medium, design: .monospaced))
                     .foregroundColor(.secondary)

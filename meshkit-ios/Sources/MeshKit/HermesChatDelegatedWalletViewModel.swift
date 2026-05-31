@@ -222,8 +222,14 @@ public struct MeshDelegatedWalletReceiptDisplayState: Equatable, Sendable {
         "Remaining session limit unchanged: \(remainingLimitLineAfterProcessing)"
     }
 
+    public var remainingLimitAfterProcessingLine: String {
+        "Remaining session limit: \(remainingLimitLineAfterProcessing)"
+    }
+
     public var renderedLines: [String] {
-        paymentPresentation.renderedLines + [remainingLimitUnchangedLine]
+        paymentPresentation.renderedLines + [
+            remainingLimitUnchanged ? remainingLimitUnchangedLine : remainingLimitAfterProcessingLine
+        ]
     }
 }
 

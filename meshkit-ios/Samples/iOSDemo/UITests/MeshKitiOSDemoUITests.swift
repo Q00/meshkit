@@ -427,6 +427,8 @@ final class MeshKitiOSDemoUITests: XCTestCase {
         configureHermesDemoSigning(hermes)
         hermes.launch()
         XCTAssertTrue(hermes.staticTexts["Hermes Chat"].waitForExistence(timeout: 8))
+        XCTAssertTrue(hermes.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "maroo OKRW delegated wallet")).firstMatch.waitForExistence(timeout: 4))
+        XCTAssertTrue(hermes.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "No private key or personal data is sent to DailyMart")).firstMatch.waitForExistence(timeout: 4))
 
         let buyButton = hermes.buttons["Buy Essentials with DailyMart"]
         XCTAssertTrue(buyButton.waitForExistence(timeout: 8))
@@ -449,6 +451,7 @@ final class MeshKitiOSDemoUITests: XCTestCase {
         XCTAssertTrue(hermes.staticTexts["Hermes Hub"].waitForExistence(timeout: 8))
         XCTAssertTrue(hermes.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "DailyMart OKRW execution submitted")).firstMatch.waitForExistence(timeout: 8))
         XCTAssertTrue(hermes.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "Target-signed receipt accepted")).firstMatch.waitForExistence(timeout: 8))
+        XCTAssertTrue(hermes.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "Remaining session limit")).firstMatch.waitForExistence(timeout: 8))
 
         if pressHomeDuringBackgroundCheckout {
             XCUIDevice.shared.press(.home)

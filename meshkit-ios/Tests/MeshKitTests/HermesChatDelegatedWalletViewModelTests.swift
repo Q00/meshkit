@@ -651,6 +651,34 @@ final class HermesChatDelegatedWalletViewModelTests: XCTestCase {
         XCTAssertTrue(displayState.renderedLines.contains("Remaining session limit unchanged: 65 OKRW"))
     }
 
+    func testConfirmedReceiptDisplayStateRendersUpdatedRemainingDelegatedSpendingLimit() throws {
+        let wallet = try HermesChatDelegatedWalletViewModels
+            .marooTestnetOKRWDailyMartGrocerySession()
+
+        let displayState = try wallet.dailyMartReceiptDisplayState(
+            afterProcessing: [
+                "chainProofType": "payment_execution",
+                "presentationState": "paid_complete",
+                "chainStatus": "confirmed",
+                "asset": "OKRW",
+                "total_krw": "35",
+                "txHash": "0xokrwConfirmedDailyMartReceipt",
+                "explorerUrl": "https://explorer-testnet.maroo.io/tx/0xokrwConfirmedDailyMartReceipt"
+            ],
+            fallbackAuditId: "anchor-ios-grocery-confirmed"
+        )
+
+        XCTAssertEqual(displayState.paymentPresentation.kind, .paidComplete)
+        XCTAssertTrue(displayState.paymentPresentation.isPaidComplete)
+        XCTAssertFalse(displayState.remainingLimitUnchanged)
+        XCTAssertEqual(displayState.processedWallet.remainingLimit, Decimal(65))
+        XCTAssertEqual(displayState.remainingLimitLineAfterProcessing, "65 OKRW")
+        XCTAssertEqual(displayState.remainingLimitAfterProcessingLine, "Remaining session limit: 65 OKRW")
+        XCTAssertTrue(displayState.renderedLines.contains("DailyMart background checkout complete"))
+        XCTAssertTrue(displayState.renderedLines.contains("Remaining session limit: 65 OKRW"))
+        XCTAssertFalse(displayState.renderedLines.contains("Remaining session limit unchanged: 65 OKRW"))
+    }
+
     func testPendingReceiptPresentationRendersBlockedByExternalChainEvidenceBesideSubmittedState() {
         let presentation = MeshDailyMartReceiptPaymentPresentation(receiptResult: [
             "presentationState": "submitted_not_final",
