@@ -27,7 +27,7 @@ final class MeshPaymentExecutionPolicyBoundaryTests: XCTestCase {
             amount: Decimal(100),
             currencyCode: "KRW",
             tokenSymbol: "OKRW",
-            recipientAddress: "maroo1dailyMartMerchant",
+            recipientAddress: "0x000000000000000000000000000000000000d417",
             policyId: policy.policyId,
             policyHash: policy.policyHash
         )
@@ -86,7 +86,7 @@ final class MeshPaymentExecutionPolicyBoundaryTests: XCTestCase {
             amount: Decimal(101),
             currencyCode: "KRW",
             tokenSymbol: "OKRW",
-            recipientAddress: "maroo1dailyMartMerchant",
+            recipientAddress: "0x000000000000000000000000000000000000d417",
             policyId: policy.policyId,
             policyHash: policy.policyHash
         )
@@ -134,7 +134,7 @@ final class MeshPaymentExecutionPolicyBoundaryTests: XCTestCase {
             remainingLimit: Decimal(500),
             expiresAt: "2026-06-30T00:00:00Z",
             asset: "OKRW",
-            recipientAddress: "maroo1dailyMartMerchant"
+            recipientAddress: "0x000000000000000000000000000000000000d417"
         )
     }
 

@@ -113,7 +113,7 @@ final class MeshAgentWalletAuthorizationCheckTests: XCTestCase {
             remainingLimit: remainingLimit,
             expiresAt: "2026-06-30T00:00:00Z",
             asset: "OKRW",
-            recipientAddress: "maroo1dailyMartMerchant"
+            recipientAddress: "0x000000000000000000000000000000000000d417"
         )
     }
 
@@ -135,7 +135,7 @@ final class MeshAgentWalletAuthorizationCheckTests: XCTestCase {
             amount: amount,
             currencyCode: "KRW",
             tokenSymbol: "OKRW",
-            recipientAddress: "maroo1dailyMartMerchant",
+            recipientAddress: "0x000000000000000000000000000000000000d417",
             policyId: "policy-hermes-dailymart-okrw-v1",
             policyHash: MeshPayloadHash(value: String(repeating: "f", count: 64))
         )

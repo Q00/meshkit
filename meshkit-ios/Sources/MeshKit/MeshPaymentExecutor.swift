@@ -1,5 +1,8 @@
 import CryptoKit
 import Foundation
+#if canImport(FoundationNetworking)
+@preconcurrency import FoundationNetworking
+#endif
 
 public enum MeshPaymentExecutorCapability: String, Codable, CaseIterable, Comparable, Sendable {
     case executePayment
@@ -2632,6 +2635,485 @@ public protocol MeshMarooTestnetPaymentExecutionSubmissionClient: Sendable {
         _ transactionRequest: MeshMarooTestnetOKRWExecutionTransactionRequest,
         providerInput input: MeshMarooTestnetPaymentExecutionProviderInput
     ) async throws -> MeshMarooTestnetPaymentExecutionSubmissionResponse
+}
+
+public protocol MeshOKRWTransferBridgeHTTPTransport: Sendable {
+    func sendOKRWTransferBridgeRequest(_ request: URLRequest) async throws -> (Data, HTTPURLResponse)
+}
+
+public struct MeshURLSessionOKRWTransferBridgeHTTPTransport: MeshOKRWTransferBridgeHTTPTransport {
+    public let session: URLSession
+
+    public init(session: URLSession = .shared) {
+        self.session = session
+    }
+
+    public func sendOKRWTransferBridgeRequest(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+        let (data, response) = try await session.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw MeshKitValidationError.invalidPaymentExecution("mawsResponse")
+        }
+        return (data, httpResponse)
+    }
+}
+
+public struct MeshMAWSTransferSendBridgeClient: MeshMarooTestnetPaymentExecutionSubmissionClient {
+    public static let toolName = "transfer.send"
+    public static let bridgeSchemaVersion = "meshkit-maws-transfer-send-bridge/v1"
+
+    public let bridgeEndpoint: URL
+    public let agentId: String
+    public let authorizationHeader: String?
+    public let transport: any MeshOKRWTransferBridgeHTTPTransport
+
+    public init(
+        bridgeEndpoint: URL,
+        agentId: String,
+        authorizationHeader: String? = nil,
+        transport: any MeshOKRWTransferBridgeHTTPTransport = MeshURLSessionOKRWTransferBridgeHTTPTransport()
+    ) throws {
+        try MeshChainProviderIdentity.validateNetworkURL("bridgeEndpoint", bridgeEndpoint)
+        self.bridgeEndpoint = bridgeEndpoint
+        self.agentId = try normalizedPaymentField("agentId", agentId)
+        self.authorizationHeader = try authorizationHeader.map { try normalizedPaymentField("authorizationHeader", $0) }
+        self.transport = transport
+    }
+
+    public func submitOKRWExecution(
+        _ transactionRequest: MeshMarooTestnetOKRWExecutionTransactionRequest,
+        providerInput input: MeshMarooTestnetPaymentExecutionProviderInput
+    ) async throws -> MeshMarooTestnetPaymentExecutionSubmissionResponse {
+        try input.validate()
+        try transactionRequest.validate(providerMetadata: input.providerMetadata)
+        let request = try httpRequest(transactionRequest: transactionRequest, input: input)
+        let (data, response) = try await transport.sendOKRWTransferBridgeRequest(request)
+        return try decodeBridgeResponse(
+            data,
+            response: response,
+            providerMetadata: input.providerMetadata,
+            submittedAt: input.submittedAt
+        )
+    }
+
+    public func httpRequest(
+        transactionRequest: MeshMarooTestnetOKRWExecutionTransactionRequest,
+        input: MeshMarooTestnetPaymentExecutionProviderInput
+    ) throws -> URLRequest {
+        try input.validate()
+        try transactionRequest.validate(providerMetadata: input.providerMetadata)
+        var request = URLRequest(url: bridgeEndpoint)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "content-type")
+        request.setValue("application/json", forHTTPHeaderField: "accept")
+        if let authorizationHeader {
+            request.setValue(authorizationHeader, forHTTPHeaderField: "authorization")
+        }
+        let payload = try MeshMAWSTransferSendBridgeRequest(
+            agentId: agentId,
+            transactionRequest: transactionRequest
+        )
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        request.httpBody = try encoder.encode(payload)
+        return request
+    }
+
+    private func decodeBridgeResponse(
+        _ data: Data,
+        response: HTTPURLResponse,
+        providerMetadata: MeshChainProviderMetadata,
+        submittedAt: String
+    ) throws -> MeshMarooTestnetPaymentExecutionSubmissionResponse {
+        guard (200..<300).contains(response.statusCode) else {
+            return try MeshMarooTestnetPaymentExecutionSubmissionResponse(
+                providerMetadata: providerMetadata,
+                status: .failed,
+                observedAt: submittedAt,
+                message: "MAWS bridge HTTP \(response.statusCode)",
+                providerOutcome: .failure,
+                resultSource: .live
+            )
+        }
+
+        let decoded = try JSONDecoder().decode(MeshMAWSTransferSendBridgeResponse.self, from: data)
+        if let error = decoded.error, decoded.ok == false {
+            return try MeshMarooTestnetPaymentExecutionSubmissionResponse(
+                providerMetadata: providerMetadata,
+                status: error.isPolicyRejection ? .policyDenied : .failed,
+                observedAt: decoded.data?.observedAt ?? submittedAt,
+                message: error.normalizedMessage,
+                providerOutcome: error.isPolicyRejection ? .policyDenied : .failure,
+                resultSource: .live
+            )
+        }
+
+        guard decoded.ok != false, let data = decoded.data else {
+            return try MeshMarooTestnetPaymentExecutionSubmissionResponse(
+                providerMetadata: providerMetadata,
+                status: .failed,
+                observedAt: submittedAt,
+                message: "MAWS bridge response missing data",
+                providerOutcome: .failure,
+                resultSource: .live
+            )
+        }
+
+        var outcome = try data.providerOutcome
+        let txHash = data.transactionHash
+        let fallbackObservedAt = data.observedAt ?? submittedAt
+        let confirmationPayload = try data.confirmationPayload(
+            providerMetadata: providerMetadata,
+            transactionHash: txHash,
+            fallbackConfirmedAt: fallbackObservedAt
+        )
+        let observedAt = confirmationPayload?.confirmedAt ?? fallbackObservedAt
+        var message = data.message
+        if outcome == .success, confirmationPayload == nil {
+            outcome = .pending
+            message = message ?? "MAWS transfer.send returned txHash without maroo confirmation proof"
+        }
+
+        return try MeshMarooTestnetPaymentExecutionSubmissionResponse(
+            providerMetadata: providerMetadata,
+            transactionHash: txHash,
+            providerOutcome: outcome.rawValue,
+            resultSource: .live,
+            observedAt: observedAt,
+            message: message,
+            confirmationPayload: confirmationPayload
+        )
+    }
+}
+
+public struct MeshMarooNativeOKRWTransferBridgeClient: MeshMarooTestnetPaymentExecutionSubmissionClient {
+    public static let toolName = "maroo.native_transfer"
+    public static let bridgeSchemaVersion = "meshkit-maroo-native-okrw-transfer-bridge/v1"
+
+    public let bridgeEndpoint: URL
+    public let authorizationHeader: String?
+    public let transport: any MeshOKRWTransferBridgeHTTPTransport
+
+    public init(
+        bridgeEndpoint: URL,
+        authorizationHeader: String? = nil,
+        transport: any MeshOKRWTransferBridgeHTTPTransport = MeshURLSessionOKRWTransferBridgeHTTPTransport()
+    ) throws {
+        try MeshChainProviderIdentity.validateNetworkURL("bridgeEndpoint", bridgeEndpoint)
+        self.bridgeEndpoint = bridgeEndpoint
+        self.authorizationHeader = try authorizationHeader.map { try normalizedPaymentField("authorizationHeader", $0) }
+        self.transport = transport
+    }
+
+    public func submitOKRWExecution(
+        _ transactionRequest: MeshMarooTestnetOKRWExecutionTransactionRequest,
+        providerInput input: MeshMarooTestnetPaymentExecutionProviderInput
+    ) async throws -> MeshMarooTestnetPaymentExecutionSubmissionResponse {
+        try input.validate()
+        try transactionRequest.validate(providerMetadata: input.providerMetadata)
+        var request = URLRequest(url: bridgeEndpoint)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "content-type")
+        request.setValue("application/json", forHTTPHeaderField: "accept")
+        if let authorizationHeader {
+            request.setValue(authorizationHeader, forHTTPHeaderField: "authorization")
+        }
+        let payload = try MeshMarooNativeOKRWTransferBridgeRequest(transactionRequest: transactionRequest)
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        request.httpBody = try encoder.encode(payload)
+        let (data, response) = try await transport.sendOKRWTransferBridgeRequest(request)
+        return try decodeBridgeResponse(
+            data,
+            response: response,
+            providerMetadata: input.providerMetadata,
+            submittedAt: input.submittedAt
+        )
+    }
+
+    private func decodeBridgeResponse(
+        _ data: Data,
+        response: HTTPURLResponse,
+        providerMetadata: MeshChainProviderMetadata,
+        submittedAt: String
+    ) throws -> MeshMarooTestnetPaymentExecutionSubmissionResponse {
+        guard (200..<300).contains(response.statusCode) else {
+            return try MeshMarooTestnetPaymentExecutionSubmissionResponse(
+                providerMetadata: providerMetadata,
+                status: .failed,
+                observedAt: submittedAt,
+                message: "maroo native OKRW bridge HTTP \(response.statusCode)",
+                providerOutcome: .failure,
+                resultSource: .live
+            )
+        }
+
+        let decoded = try JSONDecoder().decode(MeshMAWSTransferSendBridgeResponse.self, from: data)
+        if let error = decoded.error, decoded.ok == false {
+            return try MeshMarooTestnetPaymentExecutionSubmissionResponse(
+                providerMetadata: providerMetadata,
+                status: error.isPolicyRejection ? .policyDenied : .failed,
+                observedAt: decoded.data?.observedAt ?? submittedAt,
+                message: error.normalizedMessage,
+                providerOutcome: error.isPolicyRejection ? .policyDenied : .failure,
+                resultSource: .live
+            )
+        }
+
+        guard decoded.ok != false, let data = decoded.data else {
+            return try MeshMarooTestnetPaymentExecutionSubmissionResponse(
+                providerMetadata: providerMetadata,
+                status: .failed,
+                observedAt: submittedAt,
+                message: "maroo native OKRW bridge response missing data",
+                providerOutcome: .failure,
+                resultSource: .live
+            )
+        }
+
+        var outcome = try data.providerOutcome
+        let txHash = data.transactionHash
+        let fallbackObservedAt = data.observedAt ?? submittedAt
+        let confirmationPayload = try data.confirmationPayload(
+            providerMetadata: providerMetadata,
+            transactionHash: txHash,
+            fallbackConfirmedAt: fallbackObservedAt
+        )
+        let observedAt = confirmationPayload?.confirmedAt ?? fallbackObservedAt
+        var message = data.message
+        if outcome == .success, confirmationPayload == nil {
+            outcome = .pending
+            message = message ?? "maroo native OKRW bridge returned txHash without maroo confirmation proof"
+        }
+
+        return try MeshMarooTestnetPaymentExecutionSubmissionResponse(
+            providerMetadata: providerMetadata,
+            transactionHash: txHash,
+            providerOutcome: outcome.rawValue,
+            resultSource: .live,
+            observedAt: observedAt,
+            message: message,
+            confirmationPayload: confirmationPayload
+        )
+    }
+}
+
+public struct MeshMarooOKRWSubmissionClientEnvironmentFactory {
+    public static let nativeBridgeURLKey = "MESHKIT_MAROO_OKRW_TRANSFER_BRIDGE_URL"
+    public static let nativeBridgeAuthorizationKey = "MESHKIT_MAROO_OKRW_TRANSFER_AUTHORIZATION"
+    public static let mawsBridgeURLKey = "MESHKIT_MAWS_BRIDGE_URL"
+    public static let mawsAgentIdKey = "MESHKIT_MAWS_AGENT_ID"
+    public static let mawsAuthorizationKey = "MESHKIT_MAWS_AUTHORIZATION"
+    public static let waasAuthTokenKey = "WAAS_AUTH_TOKEN"
+    public static let fallbackMessage = "MAWS bridge not configured; maroo OKRW live transfer not attempted"
+
+    public let environment: [String: String]
+
+    public init(environment: [String: String]) {
+        self.environment = environment
+    }
+
+    public func makeSubmissionClient() throws -> any MeshMarooTestnetPaymentExecutionSubmissionClient {
+        if let nativeBridgeURL = urlValue(for: Self.nativeBridgeURLKey) {
+            return try MeshMarooNativeOKRWTransferBridgeClient(
+                bridgeEndpoint: nativeBridgeURL,
+                authorizationHeader: environment[Self.nativeBridgeAuthorizationKey]
+            )
+        }
+        guard let bridgeURL = urlValue(for: Self.mawsBridgeURLKey),
+              let agentId = stringValue(for: Self.mawsAgentIdKey) else {
+            return try MeshMarooTestnetDeterministicPaymentExecutionSubmissionClient(
+                message: Self.fallbackMessage
+            )
+        }
+        let authorizationHeader = environment[Self.mawsAuthorizationKey]
+            ?? environment[Self.waasAuthTokenKey].map { "Bearer \($0)" }
+        return try MeshMAWSTransferSendBridgeClient(
+            bridgeEndpoint: bridgeURL,
+            agentId: agentId,
+            authorizationHeader: authorizationHeader
+        )
+    }
+
+    private func urlValue(for key: String) -> URL? {
+        guard let value = stringValue(for: key) else {
+            return nil
+        }
+        return URL(string: value)
+    }
+
+    private func stringValue(for key: String) -> String? {
+        guard let value = environment[key]?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !value.isEmpty else {
+            return nil
+        }
+        return value
+    }
+}
+
+private struct MeshMAWSTransferSendBridgeRequest: Encodable {
+    let schemaVersion: String
+    let tool: String
+    let arguments: MeshMAWSTransferSendArguments
+    let meshkit: MeshMarooTestnetOKRWExecutionTransactionRequest
+
+    init(
+        agentId: String,
+        transactionRequest: MeshMarooTestnetOKRWExecutionTransactionRequest
+    ) throws {
+        self.schemaVersion = MeshMAWSTransferSendBridgeClient.bridgeSchemaVersion
+        self.tool = MeshMAWSTransferSendBridgeClient.toolName
+        self.arguments = try MeshMAWSTransferSendArguments(
+            agentId: agentId,
+            transactionRequest: transactionRequest
+        )
+        self.meshkit = transactionRequest
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case schemaVersion = "schema_version"
+        case tool
+        case arguments
+        case meshkit
+    }
+}
+
+private struct MeshMarooNativeOKRWTransferBridgeRequest: Encodable {
+    let schemaVersion: String
+    let tool: String
+    let arguments: MeshMarooNativeOKRWTransferArguments
+    let meshkit: MeshMarooTestnetOKRWExecutionTransactionRequest
+
+    init(transactionRequest: MeshMarooTestnetOKRWExecutionTransactionRequest) throws {
+        self.schemaVersion = MeshMarooNativeOKRWTransferBridgeClient.bridgeSchemaVersion
+        self.tool = MeshMarooNativeOKRWTransferBridgeClient.toolName
+        self.arguments = try MeshMarooNativeOKRWTransferArguments(transactionRequest: transactionRequest)
+        self.meshkit = transactionRequest
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case schemaVersion = "schema_version"
+        case tool
+        case arguments
+        case meshkit
+    }
+}
+
+private struct MeshMarooNativeOKRWTransferArguments: Encodable {
+    let to: String
+    let amount: String
+    let clientToken: String
+    let memo: String
+
+    init(transactionRequest: MeshMarooTestnetOKRWExecutionTransactionRequest) throws {
+        self.to = transactionRequest.recipientAddress
+        self.amount = NSDecimalNumber(decimal: transactionRequest.amount).stringValue
+        self.clientToken = transactionRequest.paymentId
+        self.memo = transactionRequest.memo
+    }
+}
+
+private struct MeshMAWSTransferSendArguments: Encodable {
+    let agentId: String
+    let to: String
+    let amount: String
+    let clientToken: String
+    let memo: String
+
+    init(
+        agentId: String,
+        transactionRequest: MeshMarooTestnetOKRWExecutionTransactionRequest
+    ) throws {
+        self.agentId = try normalizedPaymentField("agentId", agentId)
+        self.to = transactionRequest.recipientAddress
+        self.amount = NSDecimalNumber(decimal: transactionRequest.amount).stringValue
+        self.clientToken = transactionRequest.paymentId
+        self.memo = transactionRequest.memo
+    }
+}
+
+private struct MeshMAWSTransferSendBridgeResponse: Decodable {
+    let ok: Bool?
+    let data: MeshMAWSTransferSendBridgeResponseData?
+    let error: MeshMAWSTransferSendBridgeError?
+}
+
+private struct MeshMAWSTransferSendBridgeResponseData: Decodable {
+    let txHash: String?
+    let transactionHashAlias: String?
+    let status: String?
+    let providerOutcomeValue: String?
+    let message: String?
+    let observedAt: String?
+    let blockHash: String?
+    let blockNumber: UInt64?
+    let confirmationCount: UInt64?
+    let confirmedAt: String?
+
+    var transactionHash: String? {
+        txHash ?? transactionHashAlias
+    }
+
+    var providerOutcome: MeshMarooTestnetPaymentExecutionProviderOutcome {
+        get throws {
+            try MeshMarooTestnetPaymentExecutionProviderOutcome(
+                providerValue: providerOutcomeValue ?? status ?? (transactionHash == nil ? "pending" : "success")
+            )
+        }
+    }
+
+    func confirmationPayload(
+        providerMetadata: MeshChainProviderMetadata,
+        transactionHash: String?,
+        fallbackConfirmedAt: String
+    ) throws -> MeshMarooTestnetPaymentConfirmationPayload? {
+        guard let transactionHash,
+              let blockHash,
+              let blockNumber,
+              let confirmationCount else {
+            return nil
+        }
+        return try MeshMarooTestnetPaymentConfirmationPayload(
+            providerMetadata: providerMetadata,
+            transactionHash: transactionHash,
+            blockHash: blockHash,
+            blockNumber: blockNumber,
+            confirmationCount: confirmationCount,
+            confirmedAt: confirmedAt ?? observedAt ?? fallbackConfirmedAt
+        )
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case txHash
+        case transactionHashAlias = "transactionHash"
+        case status
+        case providerOutcomeValue = "providerOutcome"
+        case message
+        case observedAt
+        case blockHash
+        case blockNumber
+        case confirmationCount
+        case confirmedAt
+    }
+}
+
+private struct MeshMAWSTransferSendBridgeError: Decodable {
+    let code: String?
+    let message: String?
+    let suggestion: String?
+
+    var normalizedMessage: String {
+        message ?? suggestion ?? code ?? "MAWS transfer.send failed"
+    }
+
+    var isPolicyRejection: Bool {
+        let normalized = (code ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+            .replacingOccurrences(of: "-", with: "_")
+        return normalized == "policy_rejected" ||
+            normalized == "policy_denied" ||
+            normalized == "wallet_policy_denied"
+    }
 }
 
 public struct MeshMarooTestnetDeterministicPaymentExecutionSubmissionClient: MeshMarooTestnetPaymentExecutionSubmissionClient {

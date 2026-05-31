@@ -644,7 +644,7 @@ final class MeshAgentWalletDelegatedSpendBalanceTests: XCTestCase {
             walletAddress: "maroo1DailyMartAgentWallet",
             amount: Decimal(125),
             asset: asset,
-            recipient: "maroo1dailyMartMerchant",
+            recipient: "0x000000000000000000000000000000000000d417",
             anchoringReference: "maroo-anchor-\(executionId)",
             executionAttemptId: "attempt-\(executionId)",
             paymentId: "pay-\(executionId)",
@@ -677,7 +677,7 @@ final class MeshAgentWalletDelegatedSpendBalanceTests: XCTestCase {
             startsAt: "2026-05-01T00:00:00Z",
             expiresAt: "2026-06-30T00:00:00Z",
             asset: "OKRW",
-            recipientAddress: "maroo1dailyMartMerchant"
+            recipientAddress: "0x000000000000000000000000000000000000d417"
         )
     }
 
@@ -739,7 +739,7 @@ final class MeshAgentWalletDelegatedSpendBalanceTests: XCTestCase {
             amount: amount,
             currencyCode: "KRW",
             tokenSymbol: "OKRW",
-            recipientAddress: "maroo1dailyMartMerchant",
+            recipientAddress: "0x000000000000000000000000000000000000d417",
             policyId: "policy-hermes-dailymart-okrw-v1",
             policyHash: MeshPayloadHash(value: String(repeating: "f", count: 64))
         )

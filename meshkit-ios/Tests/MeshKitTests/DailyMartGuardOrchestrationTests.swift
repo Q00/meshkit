@@ -824,7 +824,7 @@ final class DailyMartGuardOrchestrationTests: XCTestCase {
                 expiresAt: "2026-05-31T12:05:00Z"
             ),
             scopeConsentGate: try scopeConsentGate(
-                signerKeyId: "demo-key",
+                signerKeyId: DailyMartDelegatedSpendingPolicy.consentGrantSignerKeyId,
                 walletAddress: "maroo1differentAgentWallet",
                 expiresAt: "2026-05-31T12:05:00Z"
             )
@@ -1238,7 +1238,7 @@ final class DailyMartGuardOrchestrationTests: XCTestCase {
                     callerBundleId: "ai.meshkit.sample.hermeschat",
                     teamId: "DEVTEAMID",
                     requestSigningAlgorithm: "Ed25519",
-                    requestSigningKeyId: "demo-key",
+                    requestSigningKeyId: DailyMartDelegatedSpendingPolicy.consentGrantSignerKeyId,
                     publicKey: signingKey.publicKey.rawRepresentation.base64EncodedString()
                 ),
                 freshnessStore: DailyMartRequestNonceFreshnessStore(
@@ -1280,7 +1280,7 @@ final class DailyMartGuardOrchestrationTests: XCTestCase {
                 appId: "app.hermes-chat",
                 installId: "ios-device",
                 bundleId: "ai.meshkit.sample.hermeschat",
-                publicKeyId: "demo-key"
+                publicKeyId: DailyMartDelegatedSpendingPolicy.consentGrantSignerKeyId
             ),
             target: MeshCapability(
                 targetBundleId: "ai.meshkit.sample.dailymart",
@@ -1290,7 +1290,7 @@ final class DailyMartGuardOrchestrationTests: XCTestCase {
             payload: payload,
             nonce: nonce,
             timestamp: timestamp,
-            signature: MeshSignature(algorithm: "Ed25519", keyId: "demo-key", value: "")
+            signature: MeshSignature(algorithm: "Ed25519", keyId: DailyMartDelegatedSpendingPolicy.consentGrantSignerKeyId, value: "")
         )
         let signature = try signingKey.signature(for: unsigned.signingInputData()).base64EncodedString()
         return MeshRequest(
@@ -1303,7 +1303,7 @@ final class DailyMartGuardOrchestrationTests: XCTestCase {
             timestamp: unsigned.timestamp,
             signature: MeshSignature(
                 algorithm: "Ed25519",
-                keyId: "demo-key",
+                keyId: DailyMartDelegatedSpendingPolicy.consentGrantSignerKeyId,
                 value: signatureValue ?? signature
             )
         )

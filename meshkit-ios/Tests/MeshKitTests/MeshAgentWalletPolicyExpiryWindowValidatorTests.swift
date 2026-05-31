@@ -66,7 +66,7 @@ final class MeshAgentWalletPolicyExpiryWindowValidatorTests: XCTestCase {
             startsAt: startsAt,
             expiresAt: expiresAt,
             asset: "OKRW",
-            recipientAddress: "maroo1dailyMartMerchant"
+            recipientAddress: "0x000000000000000000000000000000000000d417"
         )
     }
 
@@ -84,7 +84,7 @@ final class MeshAgentWalletPolicyExpiryWindowValidatorTests: XCTestCase {
             amount: Decimal(50),
             currencyCode: "KRW",
             tokenSymbol: "OKRW",
-            recipientAddress: "maroo1dailyMartMerchant",
+            recipientAddress: "0x000000000000000000000000000000000000d417",
             policyId: "policy-hermes-dailymart-okrw-v1",
             policyHash: MeshPayloadHash(value: String(repeating: "f", count: 64))
         )

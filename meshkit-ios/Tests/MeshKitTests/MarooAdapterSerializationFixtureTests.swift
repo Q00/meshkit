@@ -98,7 +98,7 @@ final class MarooAdapterSerializationFixtureTests: XCTestCase {
   "execution_kind" : "payment",
   "execution_link_hash" : {
     "algorithm" : "sha256",
-    "value" : "53cb1a42f3f71ee7870f8f30626a3150ef1826deecfff0be3e71fdd245c70a8c"
+    "value" : "ab35b59ae0d53b2a900e8e195f57783586fb59bd07b046de3d0a808d56a11f72"
   },
   "execution_link_identity" : "meshkit-maroo-execution-link\/v1:pay-maroo-fixture-001:exec-maroo-fixture-001:payment:nonce-maroo-fixture-payment-4900:policy-hermes-dailymart-okrw-v1",
   "memo" : "MeshKit|MCP|payment|OKRW|nonce-maroo-fixture-payment-4900|maroo-anchor-ios-grocery-maroo-fixture-001",
@@ -114,7 +114,7 @@ final class MarooAdapterSerializationFixtureTests: XCTestCase {
   },
   "policy_id" : "policy-hermes-dailymart-okrw-v1",
   "provider" : "maroo",
-  "recipient_address" : "maroo1dailyMartMerchant",
+  "recipient_address" : "0x000000000000000000000000000000000000d417",
   "request_id" : "ios-grocery-maroo-fixture-001",
   "request_nonce" : "nonce-maroo-fixture-payment-4900",
   "request_type" : "meshkit_okrw_execution",
@@ -159,7 +159,7 @@ final class MarooAdapterSerializationFixtureTests: XCTestCase {
             amount: amount,
             currencyCode: "krw",
             tokenSymbol: "okrw",
-            recipientAddress: "maroo1dailyMartMerchant",
+            recipientAddress: "0x000000000000000000000000000000000000d417",
             policyId: "policy-hermes-dailymart-okrw-v1",
             policyHash: policyHash
         )

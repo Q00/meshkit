@@ -1434,13 +1434,14 @@ public enum DailyMartDelegatedSpendingPolicy {
     public static let policyId = "policy-hermes-dailymart-okrw-v1"
     public static let policyHash = MeshPayloadHash(value: String(repeating: "f", count: 64))
     public static let consentGrantId = "grant-hermes-dailymart-001"
+    public static let consentGrantSignerKeyId = "sample-ios-ed25519"
     public static let walletSessionId = "wallet-session-hermes-dailymart-001"
     public static let principalId = "principal-hermes-agent-001"
     public static let requestContextSubject = "principal-hermes-agent-001"
     public static let merchantScope = "merchant.dailymart"
     public static let capabilityScope = "grocery.purchase_essentials"
     public static let asset = "OKRW"
-    public static let recipientAddress = "maroo1dailyMartMerchant"
+    public static let recipientAddress = "0x000000000000000000000000000000000000d417"
 
     public static func expectedPolicy(
         expiresAt: String = "2026-12-31T23:59:59Z"
@@ -1501,7 +1502,7 @@ public enum DailyMartDelegatedSpendingPolicy {
             capabilityId: capabilityScope,
             merchantScope: merchantScope,
             policyId: policyId,
-            signerKeyId: "demo-key",
+            signerKeyId: consentGrantSignerKeyId,
             walletAddress: "maroo1dailyMartAgentWallet",
             startsAt: startsAt,
             expiresAt: expiresAt,

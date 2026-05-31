@@ -35,7 +35,7 @@ final class MarooPaymentExecutorAdapterTests: XCTestCase {
         XCTAssertEqual(capturedTransactionRequest.executionKind, .payment)
         XCTAssertEqual(capturedTransactionRequest.asset, "OKRW")
         XCTAssertEqual(capturedTransactionRequest.amount, Decimal(4_900))
-        XCTAssertEqual(capturedTransactionRequest.recipientAddress, "maroo1dailyMartMerchant")
+        XCTAssertEqual(capturedTransactionRequest.recipientAddress, "0x000000000000000000000000000000000000d417")
         XCTAssertEqual(capturedTransactionRequest.requestNonce, fixture.originatingRequest.nonce)
         XCTAssertEqual(capturedTransactionRequest.signedMCPRequestHash, fixture.paymentRequest.requestHash)
         XCTAssertEqual(capturedTransactionRequest.anchoringReference, fixture.paymentRequest.requestAnchor.identifier.anchorId)
@@ -45,7 +45,7 @@ final class MarooPaymentExecutorAdapterTests: XCTestCase {
         XCTAssertTrue(capturedInput.canonicalString.contains("network=maroo-testnet"))
         XCTAssertTrue(capturedInput.canonicalString.contains("executionKind=payment"))
         XCTAssertTrue(capturedInput.canonicalString.contains("asset=OKRW"))
-        XCTAssertTrue(capturedInput.canonicalString.contains("recipient=maroo1dailyMartMerchant"))
+        XCTAssertTrue(capturedInput.canonicalString.contains("recipient=0x000000000000000000000000000000000000d417"))
         XCTAssertTrue(capturedInput.canonicalString.contains("requestNonce=nonce-maroo-okrw-capability-payment-4900"))
         XCTAssertTrue(capturedInput.executionLinkPayload.canonicalString.contains("requestId=ios-grocery-maroo-okrw-capability-001"))
         XCTAssertTrue(capturedInput.executionLinkPayload.canonicalString.contains("requestNonce=nonce-maroo-okrw-capability-payment-4900"))
@@ -62,6 +62,232 @@ final class MarooPaymentExecutorAdapterTests: XCTestCase {
         XCTAssertEqual(result.status, .confirmed)
         XCTAssertEqual(result.transactionHash, "0x" + String(repeating: "4", count: 64))
         XCTAssertEqual(result.providerExtensions["maroo"]?["executionKind"], "payment")
+    }
+
+    func testMAWSTransferSendBridgePostsTransferToolRequestAndMapsConfirmedTxHash() async throws {
+        let txHash = "0x" + String(repeating: "9", count: 64)
+        let transport = CapturingMAWSTransferHTTPTransport(responseObject: [
+            "ok": true,
+            "data": [
+                "txHash": txHash,
+                "status": "confirmed",
+                "message": "transfer.send confirmed",
+                "blockHash": "0x" + String(repeating: "a", count: 64),
+                "blockNumber": 9_065_700,
+                "confirmationCount": 2,
+                "confirmedAt": "2026-05-31T00:00:20Z"
+            ]
+        ])
+        let client = try MeshMAWSTransferSendBridgeClient(
+            bridgeEndpoint: try XCTUnwrap(URL(string: "https://maws-bridge.example.test/transfer")),
+            agentId: "agent-dailymart-001",
+            authorizationHeader: "Bearer test-token",
+            transport: transport
+        )
+        let adapter = try MeshMarooTestnetPaymentExecutorAdapter(submissionClient: client)
+        let fixture = try await samplePaymentExecutionFixture(kind: .payment, amount: Decimal(100))
+
+        let result = try await adapter.executePayment(
+            fixture.paymentRequest,
+            originatingRequest: fixture.originatingRequest,
+            submittedAt: "2026-05-31T00:00:09Z"
+        )
+        let requests = await transport.snapshotRequests()
+        let request = try XCTUnwrap(requests.first)
+        let body = try XCTUnwrap(request.httpBody)
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: body) as? [String: Any])
+        let arguments = try XCTUnwrap(object["arguments"] as? [String: Any])
+        let meshkit = try XCTUnwrap(object["meshkit"] as? [String: Any])
+
+        XCTAssertEqual(request.url?.absoluteString, "https://maws-bridge.example.test/transfer")
+        XCTAssertEqual(request.value(forHTTPHeaderField: "authorization"), "Bearer test-token")
+        XCTAssertEqual(object["schema_version"] as? String, "meshkit-maws-transfer-send-bridge/v1")
+        XCTAssertEqual(object["tool"] as? String, "transfer.send")
+        XCTAssertEqual(arguments["agentId"] as? String, "agent-dailymart-001")
+        XCTAssertEqual(arguments["to"] as? String, "0x000000000000000000000000000000000000d417")
+        XCTAssertEqual(arguments["amount"] as? String, "100")
+        XCTAssertEqual(arguments["clientToken"] as? String, fixture.paymentRequest.paymentId)
+        XCTAssertEqual(meshkit["request_type"] as? String, "meshkit_okrw_execution")
+        XCTAssertEqual(meshkit["asset"] as? String, "OKRW")
+        XCTAssertEqual(meshkit["signed_mcp_request_hash"] as? [String: String], [
+            "algorithm": fixture.paymentRequest.requestHash.algorithm,
+            "value": fixture.paymentRequest.requestHash.value
+        ])
+        XCTAssertEqual(result.status, .confirmed)
+        XCTAssertEqual(result.transactionHash, txHash)
+        XCTAssertEqual(result.providerExtensions["maroo"]?["resultSource"], "live")
+    }
+
+    func testMAWSTransferSendBridgeKeepsTxHashPendingUntilMarooConfirmationProofArrives() async throws {
+        let txHash = "0x" + String(repeating: "8", count: 64)
+        let transport = CapturingMAWSTransferHTTPTransport(responseObject: [
+            "ok": true,
+            "data": [
+                "txHash": txHash,
+                "status": "confirmed"
+            ]
+        ])
+        let client = try MeshMAWSTransferSendBridgeClient(
+            bridgeEndpoint: try XCTUnwrap(URL(string: "https://maws-bridge.example.test/transfer")),
+            agentId: "agent-dailymart-001",
+            transport: transport
+        )
+        let adapter = try MeshMarooTestnetPaymentExecutorAdapter(submissionClient: client)
+        let fixture = try await samplePaymentExecutionFixture(kind: .payment, amount: Decimal(100))
+
+        let result = try await adapter.executePayment(
+            fixture.paymentRequest,
+            originatingRequest: fixture.originatingRequest,
+            submittedAt: "2026-05-31T00:00:09Z"
+        )
+
+        XCTAssertEqual(result.status, .pending)
+        XCTAssertEqual(result.transactionHash, txHash)
+        XCTAssertEqual(result.providerExtensions["maroo"]?["resultSource"], "live")
+        XCTAssertEqual(result.message, "MAWS transfer.send returned txHash without maroo confirmation proof")
+    }
+
+    func testMAWSTransferSendBridgeMapsPolicyRejectedEnvelopeBeforeTxHash() async throws {
+        let transport = CapturingMAWSTransferHTTPTransport(responseObject: [
+            "ok": false,
+            "error": [
+                "code": "POLICY_REJECTED",
+                "message": "spending limit blocked transfer.send"
+            ]
+        ])
+        let client = try MeshMAWSTransferSendBridgeClient(
+            bridgeEndpoint: try XCTUnwrap(URL(string: "https://maws-bridge.example.test/transfer")),
+            agentId: "agent-dailymart-001",
+            transport: transport
+        )
+        let adapter = try MeshMarooTestnetPaymentExecutorAdapter(submissionClient: client)
+        let fixture = try await samplePaymentExecutionFixture(kind: .payment, amount: Decimal(100))
+
+        let result = try await adapter.executePayment(
+            fixture.paymentRequest,
+            originatingRequest: fixture.originatingRequest,
+            submittedAt: "2026-05-31T00:00:09Z"
+        )
+
+        XCTAssertEqual(result.status, .policyDenied)
+        XCTAssertNil(result.transactionHash)
+        XCTAssertEqual(result.errorPayload?.code, "policy_denied")
+        XCTAssertEqual(result.message, "spending limit blocked transfer.send")
+    }
+
+    func testMarooNativeOKRWTransferBridgePostsNativeTransferRequestAndMapsConfirmedReceipt() async throws {
+        let txHash = "0x" + String(repeating: "7", count: 64)
+        let transport = CapturingMAWSTransferHTTPTransport(responseObject: [
+            "ok": true,
+            "data": [
+                "txHash": txHash,
+                "status": "confirmed",
+                "message": "native OKRW confirmed",
+                "blockHash": "0x" + String(repeating: "b", count: 64),
+                "blockNumber": 9_066_001,
+                "confirmationCount": 4,
+                "confirmedAt": "2026-05-31T00:00:30Z"
+            ]
+        ])
+        let client = try MeshMarooNativeOKRWTransferBridgeClient(
+            bridgeEndpoint: try XCTUnwrap(URL(string: "http://127.0.0.1:8788/transfer")),
+            authorizationHeader: "Bearer native-test",
+            transport: transport
+        )
+        let adapter = try MeshMarooTestnetPaymentExecutorAdapter(submissionClient: client)
+        let fixture = try await samplePaymentExecutionFixture(kind: .transfer, amount: Decimal(100))
+
+        let result = try await adapter.executePayment(
+            fixture.paymentRequest,
+            originatingRequest: fixture.originatingRequest,
+            submittedAt: "2026-05-31T00:00:09Z"
+        )
+        let requests = await transport.snapshotRequests()
+        let request = try XCTUnwrap(requests.first)
+        let body = try XCTUnwrap(request.httpBody)
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: body) as? [String: Any])
+        let arguments = try XCTUnwrap(object["arguments"] as? [String: Any])
+        let meshkit = try XCTUnwrap(object["meshkit"] as? [String: Any])
+
+        XCTAssertEqual(request.url?.absoluteString, "http://127.0.0.1:8788/transfer")
+        XCTAssertEqual(request.value(forHTTPHeaderField: "authorization"), "Bearer native-test")
+        XCTAssertEqual(object["schema_version"] as? String, "meshkit-maroo-native-okrw-transfer-bridge/v1")
+        XCTAssertEqual(object["tool"] as? String, "maroo.native_transfer")
+        XCTAssertNil(arguments["agentId"])
+        XCTAssertEqual(arguments["to"] as? String, "0x000000000000000000000000000000000000d417")
+        XCTAssertEqual(arguments["amount"] as? String, "100")
+        XCTAssertEqual(arguments["clientToken"] as? String, fixture.paymentRequest.paymentId)
+        XCTAssertEqual(meshkit["execution_kind"] as? String, "transfer")
+        XCTAssertEqual(meshkit["asset"] as? String, "OKRW")
+        XCTAssertEqual(result.status, .confirmed)
+        XCTAssertEqual(result.transactionHash, txHash)
+        XCTAssertEqual(result.providerExtensions["maroo"]?["resultSource"], "live")
+    }
+
+    func testMarooNativeOKRWTransferBridgeKeepsTxHashPendingUntilReceiptProofArrives() async throws {
+        let txHash = "0x" + String(repeating: "6", count: 64)
+        let transport = CapturingMAWSTransferHTTPTransport(responseObject: [
+            "ok": true,
+            "data": [
+                "txHash": txHash,
+                "status": "confirmed"
+            ]
+        ])
+        let client = try MeshMarooNativeOKRWTransferBridgeClient(
+            bridgeEndpoint: try XCTUnwrap(URL(string: "http://127.0.0.1:8788/transfer")),
+            transport: transport
+        )
+        let adapter = try MeshMarooTestnetPaymentExecutorAdapter(submissionClient: client)
+        let fixture = try await samplePaymentExecutionFixture(kind: .transfer, amount: Decimal(100))
+
+        let result = try await adapter.executePayment(
+            fixture.paymentRequest,
+            originatingRequest: fixture.originatingRequest,
+            submittedAt: "2026-05-31T00:00:09Z"
+        )
+
+        XCTAssertEqual(result.status, .pending)
+        XCTAssertEqual(result.transactionHash, txHash)
+        XCTAssertEqual(result.providerExtensions["maroo"]?["resultSource"], "live")
+        XCTAssertEqual(result.message, "maroo native OKRW bridge returned txHash without maroo confirmation proof")
+    }
+
+    func testOKRWSubmissionClientEnvironmentFactoryPrefersDirectMarooBridgeOverMAWS() throws {
+        let client = try MeshMarooOKRWSubmissionClientEnvironmentFactory(environment: [
+            MeshMarooOKRWSubmissionClientEnvironmentFactory.nativeBridgeURLKey: "http://127.0.0.1:8788/transfer",
+            MeshMarooOKRWSubmissionClientEnvironmentFactory.nativeBridgeAuthorizationKey: "Bearer native",
+            MeshMarooOKRWSubmissionClientEnvironmentFactory.mawsBridgeURLKey: "https://maws-bridge.example.test/transfer",
+            MeshMarooOKRWSubmissionClientEnvironmentFactory.mawsAgentIdKey: "agent-dailymart-001",
+            MeshMarooOKRWSubmissionClientEnvironmentFactory.mawsAuthorizationKey: "Bearer maws"
+        ]).makeSubmissionClient()
+
+        let nativeClient = try XCTUnwrap(client as? MeshMarooNativeOKRWTransferBridgeClient)
+        XCTAssertEqual(nativeClient.bridgeEndpoint.absoluteString, "http://127.0.0.1:8788/transfer")
+        XCTAssertEqual(nativeClient.authorizationHeader, "Bearer native")
+    }
+
+    func testOKRWSubmissionClientEnvironmentFactoryBuildsMAWSBridgeWithWAASToken() throws {
+        let client = try MeshMarooOKRWSubmissionClientEnvironmentFactory(environment: [
+            MeshMarooOKRWSubmissionClientEnvironmentFactory.mawsBridgeURLKey: "https://maws-bridge.example.test/transfer",
+            MeshMarooOKRWSubmissionClientEnvironmentFactory.mawsAgentIdKey: "agent-dailymart-001",
+            MeshMarooOKRWSubmissionClientEnvironmentFactory.waasAuthTokenKey: "waas-session-token"
+        ]).makeSubmissionClient()
+
+        let mawsClient = try XCTUnwrap(client as? MeshMAWSTransferSendBridgeClient)
+        XCTAssertEqual(mawsClient.bridgeEndpoint.absoluteString, "https://maws-bridge.example.test/transfer")
+        XCTAssertEqual(mawsClient.agentId, "agent-dailymart-001")
+        XCTAssertEqual(mawsClient.authorizationHeader, "Bearer waas-session-token")
+    }
+
+    func testOKRWSubmissionClientEnvironmentFactoryFallsBackToPendingOnlyDeterministicClient() async throws {
+        let client = try MeshMarooOKRWSubmissionClientEnvironmentFactory(environment: [:]).makeSubmissionClient()
+        let deterministicClient = try XCTUnwrap(client as? MeshMarooTestnetDeterministicPaymentExecutionSubmissionClient)
+        XCTAssertEqual(deterministicClient.executionStatus, .pending)
+        XCTAssertNil(deterministicClient.transactionHash)
+        XCTAssertEqual(
+            deterministicClient.message,
+            MeshMarooOKRWSubmissionClientEnvironmentFactory.fallbackMessage
+        )
     }
 
     func testMarooExecutionLinkPayloadResolvesAnchoredMCPMetadataIntoCanonicalPayload() async throws {
@@ -84,7 +310,7 @@ final class MarooPaymentExecutorAdapterTests: XCTestCase {
         XCTAssertEqual(payload.executionKind, .payment)
         XCTAssertEqual(payload.asset, "OKRW")
         XCTAssertEqual(payload.amount, Decimal(4_900))
-        XCTAssertEqual(payload.recipient, "maroo1dailyMartMerchant")
+        XCTAssertEqual(payload.recipient, "0x000000000000000000000000000000000000d417")
         XCTAssertEqual(payload.requestId, fixture.originatingRequest.requestId)
         XCTAssertEqual(payload.requestNonce, fixture.originatingRequest.nonce)
         XCTAssertEqual(payload.callerBundleId, "ai.meshkit.sample.hermeschat")
@@ -218,7 +444,7 @@ final class MarooPaymentExecutorAdapterTests: XCTestCase {
         XCTAssertEqual(transactionRequest.executionKind, .payment)
         XCTAssertEqual(transactionRequest.asset, "OKRW")
         XCTAssertEqual(transactionRequest.amount, Decimal(4_900))
-        XCTAssertEqual(transactionRequest.recipientAddress, "maroo1dailyMartMerchant")
+        XCTAssertEqual(transactionRequest.recipientAddress, "0x000000000000000000000000000000000000d417")
         XCTAssertEqual(
             transactionRequest.memo,
             "MeshKit|MCP|payment|OKRW|nonce-maroo-okrw-capability-payment-4900|\(fixture.paymentRequest.requestAnchor.identifier.anchorId)"
@@ -265,7 +491,7 @@ final class MarooPaymentExecutorAdapterTests: XCTestCase {
         XCTAssertEqual(object["request_type"] as? String, "meshkit_okrw_execution")
         XCTAssertEqual(object["execution_kind"] as? String, "transfer")
         XCTAssertEqual(object["asset"] as? String, "OKRW")
-        XCTAssertEqual(object["recipient_address"] as? String, "maroo1dailyMartMerchant")
+        XCTAssertEqual(object["recipient_address"] as? String, "0x000000000000000000000000000000000000d417")
         XCTAssertEqual(
             object["memo"] as? String,
             "MeshKit|MCP|transfer|OKRW|nonce-maroo-okrw-capability-transfer-1200|\(fixture.paymentRequest.requestAnchor.identifier.anchorId)"
@@ -495,7 +721,7 @@ final class MarooPaymentExecutorAdapterTests: XCTestCase {
         XCTAssertEqual(result.status, .confirmed)
         XCTAssertEqual(result.tokenSymbol, "OKRW")
         XCTAssertEqual(result.amount, Decimal(4_900))
-        XCTAssertEqual(result.recipientAddress, "maroo1dailyMartMerchant")
+        XCTAssertEqual(result.recipientAddress, "0x000000000000000000000000000000000000d417")
         XCTAssertEqual(result.requestHash, fixture.paymentRequest.requestHash)
         XCTAssertEqual(result.transactionHash, "0xokrwcapability123")
         XCTAssertEqual(result.providerExtensions["maroo"]?["adapterId"], metadata.adapterId)
@@ -515,7 +741,7 @@ final class MarooPaymentExecutorAdapterTests: XCTestCase {
         XCTAssertEqual(transferResult.status, .confirmed)
         XCTAssertEqual(transferResult.tokenSymbol, "OKRW")
         XCTAssertEqual(transferResult.amount, Decimal(1_200))
-        XCTAssertEqual(transferResult.recipientAddress, "maroo1dailyMartMerchant")
+        XCTAssertEqual(transferResult.recipientAddress, "0x000000000000000000000000000000000000d417")
         XCTAssertEqual(transferResult.requestHash, transferFixture.paymentRequest.requestHash)
         XCTAssertEqual(transferResult.providerExtensions["maroo"]?["executionKind"], "transfer")
         XCTAssertEqual(transferResult.providerExtensions["maroo"]?["requestHash"], transferFixture.paymentRequest.requestHash.value)
@@ -618,7 +844,7 @@ final class MarooPaymentExecutorAdapterTests: XCTestCase {
             remainingLimit: Decimal(15_000),
             expiresAt: "2026-06-30T00:00:00Z",
             asset: "okrw",
-            recipientAddress: "maroo1dailyMartMerchant"
+            recipientAddress: "0x000000000000000000000000000000000000d417"
         )
         let submission = try MeshRequestAnchorSubmission(
             request: request,
@@ -1906,7 +2132,7 @@ final class MarooPaymentExecutorAdapterTests: XCTestCase {
             amount: amount,
             currencyCode: "krw",
             tokenSymbol: tokenSymbol,
-            recipientAddress: "maroo1dailyMartMerchant",
+            recipientAddress: "0x000000000000000000000000000000000000d417",
             policyId: "policy-hermes-dailymart-okrw-v1",
             policyHash: policyHash
         )
@@ -2128,6 +2354,34 @@ private final class CapturingMarooTransactionStateSubmissionClient: MeshMarooTes
                 )
             }
         )
+    }
+}
+
+private actor CapturingMAWSTransferHTTPTransport: MeshOKRWTransferBridgeHTTPTransport {
+    private(set) var requests: [URLRequest] = []
+    private let data: Data
+    private let statusCode: Int
+
+    init(responseObject: [String: Any], statusCode: Int = 200) {
+        self.data = try! JSONSerialization.data(withJSONObject: responseObject)
+        self.statusCode = statusCode
+    }
+
+    func sendOKRWTransferBridgeRequest(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+        requests.append(request)
+        return (
+            data,
+            HTTPURLResponse(
+                url: request.url!,
+                statusCode: statusCode,
+                httpVersion: "HTTP/1.1",
+                headerFields: ["content-type": "application/json"]
+            )!
+        )
+    }
+
+    func snapshotRequests() -> [URLRequest] {
+        requests
     }
 }
 

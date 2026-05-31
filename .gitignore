@@ -8,4 +8,6 @@ xcuserdata/
 *.xcresult
 artifacts/
 .env
+.env*.local
+*.wallet.env
 *.log

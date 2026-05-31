@@ -672,7 +672,7 @@ final class MeshKitTests: XCTestCase {
         XCTAssertEqual(exposedLimit.policyMetadata?.policyId, "policy-hermes-dailymart-okrw-v1")
         XCTAssertEqual(exposedLimit.policyMetadata?.policyHash.value, String(repeating: "f", count: 64))
         XCTAssertEqual(exposedLimit.policyMetadata?.asset, "OKRW")
-        XCTAssertEqual(exposedLimit.policyMetadata?.recipientAddress, "maroo1dailyMartMerchant")
+        XCTAssertEqual(exposedLimit.policyMetadata?.recipientAddress, "0x000000000000000000000000000000000000d417")
         XCTAssertTrue(try wallet.loadWalletConfiguration().supports(.reportDelegatedSpendingLimit))
     }
 
@@ -935,7 +935,7 @@ final class MeshKitTests: XCTestCase {
         XCTAssertEqual(policyMetadata["merchantScope"] as? String, "merchant.dailymart")
         XCTAssertEqual(policyMetadata["capabilityScope"] as? String, "grocery.purchase_essentials")
         XCTAssertEqual(policyMetadata["asset"] as? String, "OKRW")
-        XCTAssertEqual(policyMetadata["recipientAddress"] as? String, "maroo1dailyMartMerchant")
+        XCTAssertEqual(policyMetadata["recipientAddress"] as? String, "0x000000000000000000000000000000000000d417")
 
         let decoded = try JSONDecoder().decode(MeshAgentWalletDelegatedSpendingLimit.self, from: data)
         XCTAssertEqual(decoded, spendingLimit)
@@ -1019,7 +1019,7 @@ final class MeshKitTests: XCTestCase {
             capabilityScope: "grocery.purchase_essentials",
             consentGrantId: "grant-hermes-dailymart-001",
             asset: "okrw",
-            recipientAddress: "maroo1dailyMartMerchant"
+            recipientAddress: "0x000000000000000000000000000000000000d417"
         )
 
         let data = try JSONEncoder().encode(policy)
@@ -1035,7 +1035,7 @@ final class MeshKitTests: XCTestCase {
         XCTAssertNotNil(object["remainingLimit"])
         XCTAssertEqual(object["expiresAt"] as? String, "2026-06-30T00:00:00Z")
         XCTAssertEqual(object["asset"] as? String, "OKRW")
-        XCTAssertEqual(object["recipientAddress"] as? String, "maroo1dailyMartMerchant")
+        XCTAssertEqual(object["recipientAddress"] as? String, "0x000000000000000000000000000000000000d417")
 
         let decoded = try JSONDecoder().decode(MeshAgentWalletDelegatedSpendingPolicy.self, from: data)
         XCTAssertEqual(decoded, policy)
@@ -1215,7 +1215,7 @@ final class MeshKitTests: XCTestCase {
             capabilityScope: "grocery.purchase_essentials",
             consentGrantId: "grant-hermes-dailymart-001",
             asset: "OKRW",
-            recipientAddress: "maroo1dailyMartMerchant"
+            recipientAddress: "0x000000000000000000000000000000000000d417"
         )) { error in
             XCTAssertEqual(error as? MeshKitValidationError, .invalidAgentWalletIdentity("merchantScope"))
         }
@@ -1260,7 +1260,7 @@ final class MeshKitTests: XCTestCase {
             amount: Decimal(4_900),
             currencyCode: "USD",
             tokenSymbol: "USDC",
-            recipientAddress: "maroo1dailyMartMerchant",
+            recipientAddress: "0x000000000000000000000000000000000000d417",
             policyId: "policy-hermes-dailymart-okrw-v1",
             policyHash: MeshPayloadHash(value: String(repeating: "f", count: 64))
         )
@@ -1309,7 +1309,7 @@ final class MeshKitTests: XCTestCase {
             remainingLimit: Decimal(4_000),
             expiresAt: "2026-06-30T00:00:00Z",
             asset: "OKRW",
-            recipientAddress: "maroo1dailyMartMerchant"
+            recipientAddress: "0x000000000000000000000000000000000000d417"
         )
         let aboveRemainingLimitRequest = try sampleAgentWalletExecutionRequest(
             kind: .transfer,
@@ -1887,7 +1887,7 @@ final class MeshKitTests: XCTestCase {
         XCTAssertEqual(decision.executionRequest.amount, Decimal(4_900))
         XCTAssertEqual(decision.executionRequest.currencyCode, "KRW")
         XCTAssertEqual(decision.executionRequest.tokenSymbol, "OKRW")
-        XCTAssertEqual(decision.executionRequest.recipientAddress, "maroo1dailyMartMerchant")
+        XCTAssertEqual(decision.executionRequest.recipientAddress, "0x000000000000000000000000000000000000d417")
         XCTAssertEqual(decision.status, .approved)
         XCTAssertEqual(decision.approvedAmount, Decimal(4_900))
         XCTAssertNil(decision.reason)
@@ -1962,7 +1962,7 @@ final class MeshKitTests: XCTestCase {
             ),
             scope: sampleDelegatedSpendingScope(),
             amount: Decimal(100),
-            recipientAddress: "maroo1dailyMartMerchant",
+            recipientAddress: "0x000000000000000000000000000000000000d417",
             policyId: "policy-hermes-dailymart-okrw-v1",
             policyHash: MeshPayloadHash(value: String(repeating: "f", count: 64))
         )) { error in
@@ -2358,14 +2358,14 @@ final class MeshKitTests: XCTestCase {
         XCTAssertEqual(paymentRequest.requestAnchor.identifier.identity.provider, "maroo")
         XCTAssertEqual(paymentRequest.asset, "OKRW")
         XCTAssertEqual(paymentRequest.amount, Decimal(4_900))
-        XCTAssertEqual(paymentRequest.recipient, "maroo1dailyMartMerchant")
+        XCTAssertEqual(paymentRequest.recipient, "0x000000000000000000000000000000000000d417")
         XCTAssertEqual(paymentRequest.requestHash, executionRequest.requestAnchorMetadata.signedRequestHash)
 
         let data = try JSONEncoder().encode(paymentRequest)
         let object = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
         XCTAssertEqual(object["asset"] as? String, "OKRW")
         XCTAssertEqual(object["amount"] as? Int, 4_900)
-        XCTAssertEqual(object["recipient"] as? String, "maroo1dailyMartMerchant")
+        XCTAssertEqual(object["recipient"] as? String, "0x000000000000000000000000000000000000d417")
         XCTAssertEqual((object["requestHash"] as? [String: Any])?["algorithm"] as? String, "sha256")
         XCTAssertEqual((object["requestHash"] as? [String: Any])?["value"] as? String, executionRequest.requestAnchorMetadata.signedRequestHash.value)
 
@@ -2386,7 +2386,7 @@ final class MeshKitTests: XCTestCase {
         XCTAssertEqual(intent.kind, .payment)
         XCTAssertEqual(intent.asset, "OKRW")
         XCTAssertEqual(intent.amount, Decimal(4_900))
-        XCTAssertEqual(intent.recipient, "maroo1dailyMartMerchant")
+        XCTAssertEqual(intent.recipient, "0x000000000000000000000000000000000000d417")
         XCTAssertEqual(intent.requestHash, paymentRequest.requestHash)
         XCTAssertEqual(intent.requestNonce, "nonce-payment-intent-provider-neutral")
         XCTAssertEqual(intent.anchoringReference, paymentRequest.requestAnchor.identifier)
@@ -2399,7 +2399,7 @@ final class MeshKitTests: XCTestCase {
         XCTAssertEqual(object["kind"] as? String, "payment")
         XCTAssertEqual(object["asset"] as? String, "OKRW")
         XCTAssertEqual(object["amount"] as? Int, 4_900)
-        XCTAssertEqual(object["recipient"] as? String, "maroo1dailyMartMerchant")
+        XCTAssertEqual(object["recipient"] as? String, "0x000000000000000000000000000000000000d417")
         XCTAssertEqual(object["requestNonce"] as? String, "nonce-payment-intent-provider-neutral")
         XCTAssertEqual(object["policyId"] as? String, "policy-hermes-dailymart-okrw-v1")
         XCTAssertNil(object["provider"])
@@ -2423,7 +2423,7 @@ final class MeshKitTests: XCTestCase {
         XCTAssertEqual(input.capability, .executePayment)
         XCTAssertEqual(input.asset, "OKRW")
         XCTAssertEqual(input.amount, Decimal(4_900))
-        XCTAssertEqual(input.recipient, "maroo1dailyMartMerchant")
+        XCTAssertEqual(input.recipient, "0x000000000000000000000000000000000000d417")
         XCTAssertEqual(input.requestHash, paymentRequest.requestHash)
         XCTAssertTrue(input.requestHashLinkage)
 
@@ -2432,7 +2432,7 @@ final class MeshKitTests: XCTestCase {
         XCTAssertEqual(object["capability"] as? String, "executePayment")
         XCTAssertEqual(object["asset"] as? String, "OKRW")
         XCTAssertEqual(object["amount"] as? Int, 4_900)
-        XCTAssertEqual(object["recipient"] as? String, "maroo1dailyMartMerchant")
+        XCTAssertEqual(object["recipient"] as? String, "0x000000000000000000000000000000000000d417")
         XCTAssertEqual((object["requestHash"] as? [String: Any])?["algorithm"] as? String, "sha256")
         XCTAssertEqual((object["requestHash"] as? [String: Any])?["value"] as? String, paymentRequest.requestHash.value)
         XCTAssertEqual(object["requestHashLinkage"] as? Bool, true)
@@ -2534,7 +2534,7 @@ final class MeshKitTests: XCTestCase {
             kind: .payment,
             asset: "USDC",
             amount: Decimal(10),
-            recipient: "maroo1dailyMartMerchant",
+            recipient: "0x000000000000000000000000000000000000d417",
             requestHash: paymentRequest.requestHash,
             requestNonce: paymentRequest.executionRequest.requestAnchorMetadata.nonce,
             anchoringReference: paymentRequest.requestAnchor.identifier,
@@ -2667,7 +2667,7 @@ final class MeshKitTests: XCTestCase {
         XCTAssertEqual(result.amount, Decimal(4_900))
         XCTAssertEqual(result.currencyCode, "KRW")
         XCTAssertEqual(result.tokenSymbol, "OKRW")
-        XCTAssertEqual(result.recipientAddress, "maroo1dailyMartMerchant")
+        XCTAssertEqual(result.recipientAddress, "0x000000000000000000000000000000000000d417")
         XCTAssertEqual(result.requestAnchorIdentifier.anchorId, "anchor-ios-grocery-test-001")
         XCTAssertEqual(result.transactionHash, "0xokrwpayment123")
         XCTAssertEqual(result.txHash, "0xokrwpayment123")
@@ -2729,7 +2729,7 @@ final class MeshKitTests: XCTestCase {
             XCTAssertEqual(result.currencyCode, "KRW")
             XCTAssertEqual(result.tokenSymbol, "OKRW")
             XCTAssertEqual(result.amount, Decimal(4_900))
-            XCTAssertEqual(result.recipientAddress, "maroo1dailyMartMerchant")
+            XCTAssertEqual(result.recipientAddress, "0x000000000000000000000000000000000000d417")
             XCTAssertEqual(result.requestAnchorIdentifier.anchorId, "anchor-ios-grocery-test-001")
             XCTAssertEqual(result.signedRequestHash, paymentRequest.executionRequest.requestAnchorMetadata.signedRequestHash)
             XCTAssertEqual(result.transactionHash, transactionHash)
@@ -3116,7 +3116,7 @@ final class MeshKitTests: XCTestCase {
             XCTAssertEqual(result.currencyCode, "KRW")
             XCTAssertEqual(result.tokenSymbol, "OKRW")
             XCTAssertEqual(result.amount, Decimal(3_200))
-            XCTAssertEqual(result.recipientAddress, "maroo1dailyMartMerchant")
+            XCTAssertEqual(result.recipientAddress, "0x000000000000000000000000000000000000d417")
             XCTAssertEqual(result.requestAnchorIdentifier.anchorId, "anchor-ios-grocery-test-001")
             XCTAssertEqual(result.signedRequestHash, paymentRequest.executionRequest.requestAnchorMetadata.signedRequestHash)
             XCTAssertEqual(result.observedAt, "2026-05-31T00:00:12Z")
@@ -3461,7 +3461,7 @@ final class MeshKitTests: XCTestCase {
                 amount: Decimal(4_900),
                 currencyCode: "krw",
                 tokenSymbol: "okrw",
-                recipientAddress: "maroo1dailyMartMerchant",
+                recipientAddress: "0x000000000000000000000000000000000000d417",
                 policyId: "policy-hermes-dailymart-okrw-v1",
                 policyHash: MeshPayloadHash(value: String(repeating: "f", count: 64))
             )
@@ -3675,7 +3675,7 @@ final class MeshKitTests: XCTestCase {
         XCTAssertEqual(proof.walletAddress, "maroo1dailyMartAgentWallet")
         XCTAssertEqual(proof.amount, Decimal(4_900))
         XCTAssertEqual(proof.asset, "OKRW")
-        XCTAssertEqual(proof.recipient, "maroo1dailyMartMerchant")
+        XCTAssertEqual(proof.recipient, "0x000000000000000000000000000000000000d417")
         XCTAssertEqual(proof.anchoringReference, "anchor-ios-grocery-test-001")
         XCTAssertEqual(proof.anchorTxHash, "0xanchor123")
         XCTAssertEqual(proof.txHash, "0xokrwproof123")
@@ -3735,7 +3735,7 @@ final class MeshKitTests: XCTestCase {
             walletAddress: "maroo1dailyMartAgentWallet",
             amount: Decimal(4_900),
             asset: "okrw",
-            recipient: "maroo1dailyMartMerchant",
+            recipient: "0x000000000000000000000000000000000000d417",
             anchoringReference: "anchor-ios-grocery-test-001",
             anchorTxHash: "0xanchor123",
             submittedAt: "2026-05-31T00:00:21Z"
@@ -3800,7 +3800,7 @@ final class MeshKitTests: XCTestCase {
             walletAddress: "maroo1dailyMartAgentWallet",
             amount: Decimal(4_900),
             asset: "okrw",
-            recipient: "maroo1dailyMartMerchant"
+            recipient: "0x000000000000000000000000000000000000d417"
         )
 
         XCTAssertNoThrow(try proof.validateSignedRequestAnchorProof(anchor))
@@ -3843,7 +3843,7 @@ final class MeshKitTests: XCTestCase {
             walletAddress: "maroo1dailyMartAgentWallet",
             amount: Decimal(4_900),
             asset: "OKRW",
-            recipient: "maroo1dailyMartMerchant"
+            recipient: "0x000000000000000000000000000000000000d417"
         )
         let tamperedHashProof = try MeshChainProof(
             provider: proof.provider,
@@ -3921,7 +3921,7 @@ final class MeshKitTests: XCTestCase {
             walletAddress: "maroo1dailyMartAgentWallet",
             amount: Decimal(4_900),
             asset: "OKRW",
-            recipient: "maroo1dailyMartMerchant"
+            recipient: "0x000000000000000000000000000000000000d417"
         )
         func tamperedProof(
             requestNonce: String? = nil,
@@ -3987,7 +3987,7 @@ final class MeshKitTests: XCTestCase {
             walletAddress: "maroo1dailyMartAgentWallet",
             amount: Decimal(4_900),
             asset: "OKRW",
-            recipient: "maroo1dailyMartMerchant",
+            recipient: "0x000000000000000000000000000000000000d417",
             anchoringReference: "anchor-ios-grocery-test-001",
             anchorTxHash: "0xanchor123",
             txHash: "0xokrwreceiptproof001",
@@ -4063,7 +4063,7 @@ final class MeshKitTests: XCTestCase {
             walletAddress: "maroo1dailyMartAgentWallet",
             amount: Decimal(4_900),
             asset: "OKRW",
-            recipient: "maroo1dailyMartMerchant",
+            recipient: "0x000000000000000000000000000000000000d417",
             anchoringReference: "anchor-ios-grocery-owner-proof",
             anchorTxHash: "0xanchorownerproof001",
             txHash: "0xokrwownerproof001",
@@ -4125,7 +4125,7 @@ final class MeshKitTests: XCTestCase {
             walletAddress: "maroo1dailyMartAgentWallet",
             amount: Decimal(4_900),
             asset: "OKRW",
-            recipient: "maroo1dailyMartMerchant",
+            recipient: "0x000000000000000000000000000000000000d417",
             anchoringReference: "anchor-ios-grocery-linkage-proof",
             anchorTxHash: "0xanchorlinkageproof001",
             txHash: "0xokrwlinkageproof001",
@@ -4197,7 +4197,7 @@ final class MeshKitTests: XCTestCase {
             walletAddress: "maroo1dailyMartAgentWallet",
             amount: Decimal(4_900),
             asset: "OKRW",
-            recipient: "maroo1dailyMartMerchant",
+            recipient: "0x000000000000000000000000000000000000d417",
             anchoringReference: "anchor-ios-grocery-caller-owned-proof",
             anchorTxHash: "0xanchorcallerowned001",
             txHash: "0xokrwcallerowned001",
@@ -4257,7 +4257,7 @@ final class MeshKitTests: XCTestCase {
             walletAddress: "maroo1dailyMartAgentWallet",
             amount: Decimal(4_900),
             asset: "OKRW",
-            recipient: "maroo1dailyMartMerchant",
+            recipient: "0x000000000000000000000000000000000000d417",
             anchoringReference: "anchor-ios-grocery-binding-proof",
             anchorTxHash: "0xanchorbindingproof001",
             txHash: "0xokrwbindingproof001",
@@ -4427,7 +4427,7 @@ final class MeshKitTests: XCTestCase {
             walletAddress: "maroo1dailyMartAgentWallet",
             amount: Decimal(4_900),
             asset: "OKRW",
-            recipient: "maroo1dailyMartMerchant",
+            recipient: "0x000000000000000000000000000000000000d417",
             anchoringReference: "anchor-ios-grocery-test-001",
             anchorTxHash: "0XANCHOR123",
             txHash: "0XOKRWPROOF123",
@@ -5975,7 +5975,7 @@ final class MeshKitTests: XCTestCase {
             amount: Decimal(4_900),
             currencyCode: "krw",
             tokenSymbol: "okrw",
-            recipientAddress: "maroo1dailyMartMerchant",
+            recipientAddress: "0x000000000000000000000000000000000000d417",
             paymentId: "pay-agent-wallet-payment-boundary",
             anchorSubmittedAt: "2026-05-31T00:00:00Z",
             anchorSignedAt: "2026-05-31T00:00:00Z",
@@ -6042,7 +6042,7 @@ final class MeshKitTests: XCTestCase {
             amount: Decimal(4_900),
             currencyCode: "krw",
             tokenSymbol: "okrw",
-            recipientAddress: "maroo1dailyMartMerchant",
+            recipientAddress: "0x000000000000000000000000000000000000d417",
             paymentId: "xfer-agent-wallet-transfer-boundary",
             anchorSubmittedAt: "2026-05-31T00:01:00Z",
             anchorSignedAt: "2026-05-31T00:01:00Z",
@@ -6200,7 +6200,7 @@ final class MeshKitTests: XCTestCase {
                 amount: Decimal(4_900),
                 currencyCode: "krw",
                 tokenSymbol: "okrw",
-                recipientAddress: "maroo1dailyMartMerchant",
+                recipientAddress: "0x000000000000000000000000000000000000d417",
                 paymentId: "xfer-agent-wallet-transfer-failed-anchor",
                 anchorSubmittedAt: "2026-05-31T00:02:00Z",
                 anchorSignedAt: "2026-05-31T00:02:00Z",
@@ -7409,7 +7409,7 @@ final class MeshKitTests: XCTestCase {
             remainingLimit: Decimal(10_000),
             expiresAt: "2026-06-30T00:00:00Z",
             asset: "okrw",
-            recipientAddress: "maroo1dailyMartMerchant"
+            recipientAddress: "0x000000000000000000000000000000000000d417"
         )
     }
 
@@ -7428,7 +7428,7 @@ final class MeshKitTests: XCTestCase {
             "remainingLimit": 10_000,
             "expiresAt": "2026-06-30T00:00:00Z",
             "asset": "OKRW",
-            "recipientAddress": "maroo1dailyMartMerchant"
+            "recipientAddress": "0x000000000000000000000000000000000000d417"
         ]
     }
 
@@ -7437,7 +7437,7 @@ final class MeshKitTests: XCTestCase {
         kind: MeshAgentWalletExecutionKind,
         amount: Decimal,
         nonce: String,
-        recipientAddress: String = "maroo1dailyMartMerchant"
+        recipientAddress: String = "0x000000000000000000000000000000000000d417"
     ) throws -> MeshAgentWalletExecutionRequest {
         try MeshAgentWalletExecutionRequest(
             executionId: executionId,

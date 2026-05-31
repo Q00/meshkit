@@ -77,7 +77,7 @@ final class HermesChatDelegatedWalletViewModelTests: XCTestCase {
             remainingLimit: Decimal(175),
             expiresAt: "2026-12-31T23:59:59Z",
             asset: "OKRW",
-            recipientAddress: "maroo1dailyMartMerchant"
+            recipientAddress: "0x000000000000000000000000000000000000d417"
         )
         let wallet = try HermesChatDelegatedWalletViewModels.viewModel(
             providerMetadata: MeshAgentWalletProviderMetadata(
@@ -113,7 +113,7 @@ final class HermesChatDelegatedWalletViewModelTests: XCTestCase {
             remainingLimit: Decimal(175),
             expiresAt: "2026-12-31T23:59:59Z",
             asset: "OKRW",
-            recipientAddress: "maroo1dailyMartMerchant"
+            recipientAddress: "0x000000000000000000000000000000000000d417"
         )
         let wallet = try HermesChatDelegatedWalletViewModels.viewModel(
             providerMetadata: MeshAgentWalletProviderMetadata(
@@ -1183,7 +1183,7 @@ final class HermesChatDelegatedWalletViewModelTests: XCTestCase {
             walletAddress: "maroo1dailyMartAgentWallet",
             amount: amount,
             asset: asset,
-            recipient: "maroo1dailyMartMerchant",
+            recipient: "0x000000000000000000000000000000000000d417",
             anchoringReference: "maroo-anchor-\(executionId)",
             executionAttemptId: "attempt-\(executionId)",
             paymentId: "pay-\(executionId)",

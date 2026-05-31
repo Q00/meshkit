@@ -9,12 +9,37 @@ CONFIGURATION="${CONFIGURATION:-Debug}"
 BUILD_ROOT="${BUILD_ROOT:-$ROOT/build/ios-device-products}"
 ARTIFACTS="$ROOT/artifacts/ios-device/$(date +%Y%m%d-%H%M%S)"
 ALLOW_PROVISIONING_UPDATES="${ALLOW_PROVISIONING_UPDATES:-1}"
+DEMO_WALLET_ENV_PATH="${DEMO_WALLET_ENV_PATH:-$ROOT/.env.maroo-demo.local}"
 APP_TARGETS=(HermesChat MintNotes DailyMart)
 
 mkdir -p "$ARTIFACTS"
 
 log() { printf '\n==> %s\n' "$*"; }
 fail() { printf '\nERROR: %s\n' "$*" >&2; exit 1; }
+
+load_demo_wallet_env() {
+  [[ -f "$DEMO_WALLET_ENV_PATH" ]] || return 0
+  log "Loading maroo demo launch defaults from $DEMO_WALLET_ENV_PATH"
+  while IFS='=' read -r key value; do
+    [[ -n "${key:-}" ]] || continue
+    [[ "$key" != \#* ]] || continue
+    case "$key" in
+      MESHKIT_MAROO_OKRW_TRANSFER_BRIDGE_URL|MESHKIT_MAROO_OKRW_TRANSFER_AUTHORIZATION)
+        if [[ -z "${!key:-}" ]]; then
+          export "$key=$value"
+        fi
+        ;;
+    esac
+  done < "$DEMO_WALLET_ENV_PATH"
+}
+
+default_bridge_host() {
+  if command -v ipconfig >/dev/null; then
+    ipconfig getifaddr en0 2>/dev/null && return 0
+    ipconfig getifaddr en1 2>/dev/null && return 0
+  fi
+  return 1
+}
 
 explain_build_blocker() {
   local log_file="$1"
@@ -37,6 +62,8 @@ DEFAULT_HERMES_PRIVATE_KEY_BASE64="ciDtnehd8FlWERtZE2lzacQc3/LLIJY0CavAcv0THko="
 DEFAULT_HERMES_PUBLIC_KEY_BASE64="SYRITem/8/4woLf6P3Iec58z4jBtxzEB+g+UXeS8mcU="
 DEFAULT_DAILYMART_RECEIPT_PRIVATE_KEY_BASE64="LaXmm9S12JqU7R/y9sufJiShgajyWCkyFeGazh4qhb0="
 DEFAULT_DAILYMART_RECEIPT_PUBLIC_KEY_BASE64="Bauj33zFJH8pAyxeCxrkn9NNjC/dRfPVXn9avxPskyg="
+
+load_demo_wallet_env
 
 if [[ -z "$DEVICE_SELECTOR" ]]; then
   DEVICE_SELECTOR="$DEVICE_UDID"
@@ -142,8 +169,75 @@ for target in HermesChat DailyMart; do
     DailyMart) bundle_id="ai.meshkit.sample.dailymart" ;;
     *) fail "No launch bundle id configured for $target" ;;
   esac
+  launch_env_json="{}"
+  if [[ "$target" == "DailyMart" && ( ( -n "${MESHKIT_MAWS_BRIDGE_URL:-}" && -n "${MESHKIT_MAWS_AGENT_ID:-}" ) || -n "${MESHKIT_MAROO_OKRW_TRANSFER_BRIDGE_URL:-}" ) ]]; then
+    if [[ -z "${MESHKIT_IOS_BRIDGE_HOST:-}" ]]; then
+      MESHKIT_IOS_BRIDGE_HOST="$(default_bridge_host || true)"
+      export MESHKIT_IOS_BRIDGE_HOST
+    fi
+    launch_payload="$(python3 - <<'PY'
+import json
+import os
+from urllib.parse import urlparse, urlunparse
+
+bridge_host = os.environ.get("MESHKIT_IOS_BRIDGE_HOST", "").strip()
+
+def device_reachable_url(value):
+    parsed = urlparse(value)
+    if parsed.hostname in {"127.0.0.1", "localhost", "::1"}:
+        if not bridge_host:
+            raise SystemExit(
+                "MESHKIT_IOS_BRIDGE_HOST is required because physical iPad cannot reach Mac loopback bridge URL "
+                f"{value}"
+            )
+        netloc = bridge_host
+        if parsed.port:
+            netloc = f"{netloc}:{parsed.port}"
+        return urlunparse((parsed.scheme, netloc, parsed.path, parsed.params, parsed.query, parsed.fragment))
+    return value
+
+def redacted(key, value):
+    if key in {"WAAS_AUTH_TOKEN", "MESHKIT_MAWS_AUTHORIZATION", "MESHKIT_MAROO_OKRW_TRANSFER_AUTHORIZATION"}:
+        return "<redacted>"
+    return value
+
+keys = [
+    "MESHKIT_MAWS_BRIDGE_URL",
+    "MESHKIT_MAWS_AGENT_ID",
+    "MESHKIT_MAWS_AUTHORIZATION",
+    "WAAS_AUTH_TOKEN",
+    "MESHKIT_MAROO_OKRW_TRANSFER_BRIDGE_URL",
+    "MESHKIT_MAROO_OKRW_TRANSFER_AUTHORIZATION",
+]
+launch = {}
+for key in keys:
+    value = os.environ.get(key)
+    if not value:
+        continue
+    if key in {"MESHKIT_MAWS_BRIDGE_URL", "MESHKIT_MAROO_OKRW_TRANSFER_BRIDGE_URL"}:
+        value = device_reachable_url(value)
+    launch[key] = value
+print(json.dumps({
+    "launch": launch,
+    "artifact": {key: redacted(key, value) for key, value in launch.items()},
+}))
+PY
+)"
+    launch_env_json="$(python3 - "$launch_payload" <<'PY'
+import json
+import sys
+print(json.dumps(json.loads(sys.argv[1])["launch"]))
+PY
+)"
+    python3 - "$launch_payload" <<'PY' > "$ARTIFACTS/DailyMart-launch-environment.json"
+import json
+import sys
+print(json.dumps(json.loads(sys.argv[1])["artifact"], indent=2, sort_keys=True))
+PY
+  fi
   log "Launching $target on the iPad"
   xcrun devicectl device process launch --device "$DEVICE_SELECTOR" "$bundle_id" \
+    --environment-variables "$launch_env_json" \
     --json-output "$ARTIFACTS/$target-launch.json" \
     --log-output "$ARTIFACTS/$target-launch.log" \
     --timeout 60 || fail "$target install succeeded but launch failed; inspect $ARTIFACTS/$target-launch.log"

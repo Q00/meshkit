@@ -521,8 +521,16 @@ struct DailyMartApp: App {
             ),
             walletPolicyGuard: try DailyMartPreExecutionWalletPolicyGuard(),
             requestAnchorProvider: try MeshMarooTestnetRequestAnchorAdapter(status: .submitted),
-            paymentExecutor: try MeshMarooTestnetPaymentExecutorAdapter()
+            paymentExecutor: try MeshMarooTestnetPaymentExecutorAdapter(
+                submissionClient: dailyMartOKRWSubmissionClient()
+            )
         )
+    }
+
+    private func dailyMartOKRWSubmissionClient() throws -> any MeshMarooTestnetPaymentExecutionSubmissionClient {
+        try MeshMarooOKRWSubmissionClientEnvironmentFactory(
+            environment: ProcessInfo.processInfo.environment
+        ).makeSubmissionClient()
     }
 
     private func signedReceipt(for request: MeshRequest, orderId: String) throws -> MeshReceipt {
@@ -1013,6 +1021,8 @@ private struct DailyMartRootView: View {
                                 .foregroundColor(.primary)
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.78)
+                                .accessibilityIdentifier("\(receiptChainProofAccessibilityPrefix.lowercased().replacingOccurrences(of: " ", with: "-"))-debug-ui")
+                                .accessibilityValue(receiptChainProofAccessibilitySummary)
                             Text("Target-owned DailyMart MeshReceipt")
                                 .font(.system(size: 12.5, weight: .semibold))
                                 .foregroundColor(.secondary)
@@ -1021,7 +1031,7 @@ private struct DailyMartRootView: View {
                     VStack(spacing: 8) {
                         ForEach(receiptChainProofFields) { field in
                             ProofRow(label: field.label, value: field.value)
-                                .accessibilityLabel("\(receiptChainProofAccessibilityPrefix) \(field.schemaName): \(field.value)")
+                                .accessibilityLabel("\(receiptChainProofAccessibilityPrefix) \(field.label): \(field.value)")
                                 .accessibilityIdentifier("chain-proof-field-\(field.schemaName)")
                         }
                     }
@@ -1031,9 +1041,14 @@ private struct DailyMartRootView: View {
                 }
                 .accessibilityElement(children: .contain)
                 .accessibilityLabel("\(receiptChainProofTitle) fields")
-                .accessibilityIdentifier("\(receiptChainProofAccessibilityPrefix.lowercased().replacingOccurrences(of: " ", with: "-"))-debug-ui")
             }
         }
+    }
+
+    private var receiptChainProofAccessibilitySummary: String {
+        receiptChainProofFields
+            .map { "\($0.schemaName)=\($0.label): \($0.value)" }
+            .joined(separator: " | ")
     }
 
     private var deliveryCard: some View {

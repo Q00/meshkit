@@ -121,7 +121,7 @@ final class MeshKitiOSDemoUITests: XCTestCase {
 
         XCTAssertTrue(dailyMart.staticTexts["DailyMart"].waitForExistence(timeout: 8))
         assertVisibleText("Pending provider-neutral chain proof", in: dailyMart)
-        assertVisibleElement("pending-chain-proof-debug-ui", in: dailyMart)
+        let proofSummary = assertVisibleElement("pending-chain-proof-debug-ui", in: dailyMart)
 
         let providerNeutralPendingFields = [
             ("provider", "Provider"),
@@ -153,12 +153,9 @@ final class MeshKitiOSDemoUITests: XCTestCase {
             ("externalChainMessage", "Message")
         ]
 
-        for (_, label) in providerNeutralPendingFields {
-            assertVisibleText(label, in: dailyMart)
-        }
-
-        for (schemaName, _) in providerNeutralPendingFields {
-            assertVisibleElement("chain-proof-field-\(schemaName)", in: dailyMart)
+        for (schemaName, label) in providerNeutralPendingFields {
+            assertElementValueContains(proofSummary, schemaName)
+            assertElementValueContains(proofSummary, label)
         }
 
         for value in [
@@ -187,7 +184,7 @@ final class MeshKitiOSDemoUITests: XCTestCase {
             "https://rpc-testnet.maroo.io",
             "maroo live OKRW confirmation is unavailable for this demo run"
         ] {
-            assertVisibleText(value, in: dailyMart)
+            assertElementValueContains(proofSummary, value)
         }
 
         XCTAssertFalse(
@@ -601,21 +598,33 @@ final class MeshKitiOSDemoUITests: XCTestCase {
         XCTFail("Expected visible text containing \(text)", file: file, line: line)
     }
 
-    private func assertVisibleElement(_ identifier: String, in app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) {
+    @discardableResult
+    private func assertVisibleElement(_ identifier: String, in app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) -> XCUIElement {
         for _ in 0..<6 {
             app.swipeDown()
         }
         var match = app.descendants(matching: .any).matching(identifier: identifier).firstMatch
         if match.waitForExistence(timeout: 1.0) {
-            return
+            return match
         }
         for _ in 0..<8 {
             app.swipeUp()
             match = app.descendants(matching: .any).matching(identifier: identifier).firstMatch
             if match.waitForExistence(timeout: 0.8) {
-                return
+                return match
             }
         }
         XCTFail("Expected visible element with identifier \(identifier)", file: file, line: line)
+        return match
+    }
+
+    private func assertElementValueContains(_ element: XCUIElement, _ text: String, file: StaticString = #filePath, line: UInt = #line) {
+        let value = (element.value as? String) ?? ""
+        XCTAssertTrue(
+            value.contains(text),
+            "Expected element value to contain \(text); value was \(value)",
+            file: file,
+            line: line
+        )
     }
 }
