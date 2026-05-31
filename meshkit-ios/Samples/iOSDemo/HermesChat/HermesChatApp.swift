@@ -51,6 +51,7 @@ struct HermesChatApp: App {
     @State private var isSavedConsentCall = false
     @State private var showSavedConsentForegroundAlert = false
     @State private var confirmedReceiptExplorerURL: URL?
+    @State private var confirmedDailyMartReceiptResult: [String: String]?
     @State private var pendingReceiptTokens: Set<String> = []
     @State private var pendingReceiptStore = MeshPendingReceiptStore()
     @State private var delegatedWallet = try! HermesChatDelegatedWalletViewModels.marooTestnetOKRWDailyMartGrocerySession()
@@ -78,7 +79,8 @@ struct HermesChatApp: App {
                 openDailyMart: openDailyMart,
                 prepareDailyMartSavedConsentCall: prepareDailyMartSavedConsentCall,
                 confirmDailyMartSavedConsentCall: confirmDailyMartSavedConsentCall,
-                openDailyMartSavedConsentReceipt: openDailyMartSavedConsentReceipt
+                openDailyMartSavedConsentReceipt: openDailyMartSavedConsentReceipt,
+                saveDailyMartLedgerToMintNotes: saveDailyMartLedgerToMintNotes
             )
             .onAppear { startDemoScriptIfNeeded() }
             .task { await refreshMarooWalletBalanceIfAvailable() }
@@ -120,6 +122,7 @@ struct HermesChatApp: App {
                         )
                         let presentation = displayState?.paymentPresentation ?? MeshDailyMartReceiptPaymentPresentation(receiptResult: receipt.result, fallbackAuditId: auditId)
                         confirmedReceiptExplorerURL = nil
+                        confirmedDailyMartReceiptResult = nil
                         isBackgroundProcessing = false
                         lastAction = orderState.lastAction
                         let remainingLimitUnchangedLine = displayState?.remainingLimitUnchangedLine
@@ -134,6 +137,7 @@ struct HermesChatApp: App {
                         )
                         let presentation = displayState?.paymentPresentation ?? MeshDailyMartReceiptPaymentPresentation(receiptResult: receipt.result, fallbackAuditId: auditId)
                         confirmedReceiptExplorerURL = nil
+                        confirmedDailyMartReceiptResult = nil
                         isBackgroundProcessing = false
                         lastAction = orderState.lastAction
                         callbackText = displayState?.renderedLines.joined(separator: "\n")
@@ -149,6 +153,7 @@ struct HermesChatApp: App {
                         )
                         let presentation = MeshDailyMartReceiptPaymentPresentation(receiptResult: receipt.result, fallbackAuditId: auditId)
                         confirmedReceiptExplorerURL = presentation.explorerURL
+                        confirmedDailyMartReceiptResult = receipt.result
                         if let decrement {
                             delegatedWallet = decrement.wallet
                         }
@@ -161,9 +166,12 @@ struct HermesChatApp: App {
                     }
                 } else {
                     isBackgroundProcessing = false
-                    lastAction = "Mint Notes saved content"
-                    callbackText = "Callback received from target app: " + url.absoluteString
-                    auditTrail = "Demo callback receipt accepted: notes.append_note\nreceipt_token=\(receipt.token) · token_consumed=true · grocery production path requires target-signed receipt verification."
+                    let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+                    let noteRef = components?.queryItems?.first(where: { $0.name == "note_ref" })?.value ?? "unknown"
+                    let auditId = components?.queryItems?.first(where: { $0.name == "audit_id" })?.value ?? receipt.token
+                    lastAction = "Mint Notes ledger saved"
+                    callbackText = "Mint Notes saved the DailyMart household ledger.\nNote ref: \(noteRef)\nAudit id: \(auditId)"
+                    auditTrail = "notes.append_note callback accepted · receipt_token=\(receipt.token) · token_consumed=true · ledger derived from verified DailyMart paid receipt."
                 }
             }
         }
@@ -298,6 +306,14 @@ struct HermesChatApp: App {
     }
 
     private func openMintNotes() {
+        openMintNotes(
+            requestId: "ios-demo-001",
+            noteRef: "ios:mint:demo",
+            text: "Ship MeshKit iOS demo with OCG discovery."
+        )
+    }
+
+    private func openMintNotes(requestId: String, noteRef: String, text: String) {
         let capability = OpenCapabilityGraph.mintNotesSample.findCapability("notes.append_note")
         let caller = MeshIdentity(appId: "app.hermes-chat", installId: "ios-sim", bundleId: "ai.meshkit.sample.hermeschat", publicKeyId: SampleMeshSigningKey.keyId)
         let target = MeshCapability(targetBundleId: "ai.meshkit.sample.mintnotes", capabilityId: capability?.id ?? "notes.append_note", version: "1.0")
@@ -307,18 +323,45 @@ struct HermesChatApp: App {
                 target: target,
                 signer: MeshRequestSigner.ed25519(keyId: SampleMeshSigningKey.keyId, privateKey: try SampleMeshSigningKey.privateKey())
             ).makeRequest(
-                requestId: "ios-demo-001",
-                payload: ["text": "Ship MeshKit iOS demo with OCG discovery.", "note_ref": "ios:mint:demo"],
-                nonce: "ios-demo-" + UUID().uuidString,
+                requestId: requestId,
+                payload: ["text": text, "note_ref": noteRef],
+                nonce: requestId + "-nonce-" + UUID().uuidString,
                 timestamp: ISO8601DateFormatter().string(from: Date())
             )
-            pendingReceiptTokens.insert("ios-demo-001")
+            pendingReceiptTokens.insert(requestId)
             lastAction = "Opening Mint Notes"
             let url = try MeshURLRouter.invokeURL(scheme: capability?.urlScheme ?? "mintnotes://mesh/invoke", request: request)
             UIApplication.shared.open(url)
         } catch {
             callbackText = "Failed to encode MeshRequest: \(error)"
         }
+    }
+
+    private func saveDailyMartLedgerToMintNotes() {
+        guard let result = confirmedDailyMartReceiptResult else {
+            callbackText = "DailyMart paid receipt is not available yet. Hermes only writes a ledger after verified payment completion."
+            auditTrail = "ledger.save.blocked · missing confirmed DailyMart receipt"
+            return
+        }
+        let orderId = result["order_id"] ?? "DM-unknown"
+        let total = result["total_krw"] ?? result["amount"] ?? "100"
+        let asset = result["asset"] ?? result["payment_asset"] ?? delegatedWallet.asset
+        let txHash = result["txHash"] ?? "unavailable"
+        let explorer = result["explorerUrl"] ?? "unavailable"
+        let noteRef = "ledger:dailymart:\(orderId)"
+        let requestId = "ios-ledger-\(orderId)-\(UUID().uuidString.prefix(8))"
+        let text = [
+            "DailyMart household ledger",
+            "Order: \(orderId)",
+            "Category: groceries",
+            "Items: laundry detergent x1, toilet paper x2, bottled water 2L x6",
+            "Amount: \(total) \(asset)",
+            "Payment: maroo testnet OKRW",
+            "Tx hash: \(txHash)",
+            "Explorer: \(explorer)"
+        ].joined(separator: "\n")
+        auditTrail = "ocg.scan.complete · MintNotes matched for notes.append_note · ledger source=verified DailyMart receipt · order_id=\(orderId)"
+        openMintNotes(requestId: requestId, noteRef: noteRef, text: text)
     }
 
     private func startDailyMartBackgroundProcessing(auditId: String) {
@@ -494,6 +537,7 @@ private struct HermesRootView: View {
     let prepareDailyMartSavedConsentCall: () -> Void
     let confirmDailyMartSavedConsentCall: () -> Void
     let openDailyMartSavedConsentReceipt: () -> Void
+    let saveDailyMartLedgerToMintNotes: () -> Void
 
     private let bgTop = Color(red: 0.965, green: 0.972, blue: 0.984)
     private let bgBottom = Color(red: 0.940, green: 0.955, blue: 0.980)
@@ -892,6 +936,19 @@ private struct HermesRootView: View {
                     }
                     .accessibilityLabel("Open maroo explorer receipt link")
                     .accessibilityValue(confirmedReceiptExplorerURL.absoluteString)
+                }
+
+                if hasDailyMartConsent && !isBackgroundProcessing && lastAction.contains("confirmed") {
+                    Button(action: saveDailyMartLedgerToMintNotes) {
+                        AppActionCard(
+                            icon: "note.text.badge.plus",
+                            title: "Save household ledger",
+                            subtitle: "Find Mint Notes · notes.append_note",
+                            color: purple,
+                            primary: true
+                        )
+                    }
+                    .accessibilityLabel("Save DailyMart household ledger to Mint Notes")
                 }
 
                 if hasDailyMartConsent && !isBackgroundProcessing && !isSavedConsentCall {

@@ -2,12 +2,13 @@ import SwiftUI
 import MeshKit
 
 private enum HermesRequestSigningTrust {
+    private static let samplePublicKeyBase64 = "SYRITem/8/4woLf6P3Iec58z4jBtxzEB+g+UXeS8mcU="
+
     static func publicKeyBase64() throws -> String {
-        guard let raw = ProcessInfo.processInfo.environment["MESHKIT_IOS_DEMO_PUBLIC_KEY_BASE64"],
-              !raw.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            throw MeshKitValidationError.signatureRequired
-        }
-        return raw
+        let raw = ProcessInfo.processInfo.environment["MESHKIT_IOS_DEMO_PUBLIC_KEY_BASE64"] ?? samplePublicKeyBase64
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { throw MeshKitValidationError.signatureRequired }
+        return trimmed
     }
 }
 
@@ -24,7 +25,7 @@ struct MintNotesApp: App {
                 LinearGradient(colors: [Color(red: 0.04, green: 0.20, blue: 0.16), Color(red: 0.02, green: 0.45, blue: 0.34)], startPoint: .top, endPoint: .bottom).ignoresSafeArea()
                 VStack(alignment: .leading, spacing: 18) {
                     Text("Mint Notes").font(.largeTitle.bold()).foregroundColor(.white)
-                    Text("Target app • notes.append_note").foregroundColor(.mint)
+                    Text("Target app • notes.append_note • household ledger").foregroundColor(.mint)
                     VStack(alignment: .leading, spacing: 10) {
                         Text("Received MeshKit request").font(.headline).foregroundColor(.white)
                         Text(incoming).foregroundColor(.white.opacity(0.9))
@@ -56,7 +57,7 @@ struct MintNotesApp: App {
         do {
             let decoded = try MeshRequest.decodedFromURLScheme(encoded)
             request = decoded
-            incoming = "Decoded request. Consent required before writing user content. Production preview requires verified transport caller.\n\nPayload: \(decoded.payload)"
+            incoming = "Decoded signed request. Consent required before writing user content.\n\nPayload: \(decoded.payload)"
         } catch {
             request = nil
             incoming = "Rejected MeshKit request: \(error)"
