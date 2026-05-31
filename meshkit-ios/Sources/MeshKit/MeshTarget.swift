@@ -73,7 +73,7 @@ public enum MeshTarget {
 
     public static func verifyPayloadHash(_ request: MeshRequest) throws {
         guard request.payloadHash.algorithm.lowercased() == "sha256" else { throw MeshKitValidationError.unsupportedPayloadHashAlgorithm }
-        let actual = MeshRequest.sha256HexForPayload(request.payload)
+        let actual = MeshRequest.sha256HexForPayload(request.payload, nonce: request.nonce)
         if actual.lowercased() != request.payloadHash.value.lowercased() { throw MeshKitValidationError.payloadHashMismatch }
     }
 

@@ -16,9 +16,27 @@ mkdir -p "$ARTIFACTS"
 log() { printf '\n==> %s\n' "$*"; }
 fail() { printf '\nERROR: %s\n' "$*" >&2; exit 1; }
 
-make_keypair() {
-  swift -e 'import CryptoKit; import Foundation; let k = Curve25519.Signing.PrivateKey(); print(k.rawRepresentation.base64EncodedString()); print(k.publicKey.rawRepresentation.base64EncodedString())'
+explain_build_blocker() {
+  local log_file="$1"
+  if grep -Eq "No Accounts|No profiles for|requires a development team|requires a provisioning profile" "$log_file"; then
+    cat >&2 <<MSG
+
+The physical iPad build reached Xcode signing/provisioning, but local Apple
+Developer setup blocked installation. This is external to MeshKit runtime code.
+
+Fix in Xcode Settings > Accounts, then download/create development profiles for
+the demo bundle ids, or rerun with a valid team:
+  DEVELOPMENT_TEAM=<APPLE_TEAM_ID> scripts/install_ios_device.sh
+
+BlockedByExternalChain/DeviceSigning evidence log: $log_file
+MSG
+  fi
 }
+
+DEFAULT_HERMES_PRIVATE_KEY_BASE64="ciDtnehd8FlWERtZE2lzacQc3/LLIJY0CavAcv0THko="
+DEFAULT_HERMES_PUBLIC_KEY_BASE64="SYRITem/8/4woLf6P3Iec58z4jBtxzEB+g+UXeS8mcU="
+DEFAULT_DAILYMART_RECEIPT_PRIVATE_KEY_BASE64="LaXmm9S12JqU7R/y9sufJiShgajyWCkyFeGazh4qhb0="
+DEFAULT_DAILYMART_RECEIPT_PUBLIC_KEY_BASE64="Bauj33zFJH8pAyxeCxrkn9NNjC/dRfPVXn9avxPskyg="
 
 if [[ -z "$DEVICE_SELECTOR" ]]; then
   DEVICE_SELECTOR="$DEVICE_UDID"
@@ -69,16 +87,14 @@ if [[ "$PRECHECK_BLOCKED" == "1" ]]; then
 fi
 
 if [[ -z "${MESHKIT_IOS_DEMO_PRIVATE_KEY_BASE64:-}" || -z "${MESHKIT_IOS_DEMO_PUBLIC_KEY_BASE64:-}" ]]; then
-  log "Generating local ephemeral Hermes signing keypair for this install"
-  HERMES_KEYPAIR="$(make_keypair)"
-  export MESHKIT_IOS_DEMO_PRIVATE_KEY_BASE64="$(printf '%s\n' "$HERMES_KEYPAIR" | sed -n '1p')"
-  export MESHKIT_IOS_DEMO_PUBLIC_KEY_BASE64="$(printf '%s\n' "$HERMES_KEYPAIR" | sed -n '2p')"
+  log "Using stable sample Hermes signing keypair for direct iPad launches"
+  export MESHKIT_IOS_DEMO_PRIVATE_KEY_BASE64="$DEFAULT_HERMES_PRIVATE_KEY_BASE64"
+  export MESHKIT_IOS_DEMO_PUBLIC_KEY_BASE64="$DEFAULT_HERMES_PUBLIC_KEY_BASE64"
 fi
 if [[ -z "${MESHKIT_IOS_DAILYMART_RECEIPT_PRIVATE_KEY_BASE64:-}" || -z "${MESHKIT_IOS_DAILYMART_RECEIPT_PUBLIC_KEY_BASE64:-}" ]]; then
-  log "Generating local ephemeral DailyMart receipt keypair for this install"
-  DAILYMART_KEYPAIR="$(make_keypair)"
-  export MESHKIT_IOS_DAILYMART_RECEIPT_PRIVATE_KEY_BASE64="$(printf '%s\n' "$DAILYMART_KEYPAIR" | sed -n '1p')"
-  export MESHKIT_IOS_DAILYMART_RECEIPT_PUBLIC_KEY_BASE64="$(printf '%s\n' "$DAILYMART_KEYPAIR" | sed -n '2p')"
+  log "Using stable sample DailyMart receipt keypair for direct iPad launches"
+  export MESHKIT_IOS_DAILYMART_RECEIPT_PRIVATE_KEY_BASE64="$DEFAULT_DAILYMART_RECEIPT_PRIVATE_KEY_BASE64"
+  export MESHKIT_IOS_DAILYMART_RECEIPT_PUBLIC_KEY_BASE64="$DEFAULT_DAILYMART_RECEIPT_PUBLIC_KEY_BASE64"
 fi
 
 DESTINATION="id=$DEVICE_SELECTOR"
@@ -103,7 +119,11 @@ for target in "${APP_TARGETS[@]}"; do
   mkdir -p "$target_build_dir"
 
   log "Building $target for physical iPad"
-  xcodebuild "${COMMON_XCODE_ARGS[@]}" -scheme "$target" CONFIGURATION_BUILD_DIR="$target_build_dir" build 2>&1 | tee "$ARTIFACTS/$target-build.log"
+  build_log="$ARTIFACTS/$target-build.log"
+  if ! xcodebuild "${COMMON_XCODE_ARGS[@]}" -scheme "$target" CONFIGURATION_BUILD_DIR="$target_build_dir" build 2>&1 | tee "$build_log"; then
+    explain_build_blocker "$build_log"
+    fail "$target physical iPad build failed; inspect $build_log"
+  fi
 
   app_path="$target_build_dir/$target.app"
   [[ -d "$app_path" ]] || fail "Built app not found for $target at $app_path"
@@ -116,11 +136,18 @@ for target in "${APP_TARGETS[@]}"; do
 
 done
 
-log "Launching HermesChat on the iPad"
-xcrun devicectl device process launch --device "$DEVICE_SELECTOR" ai.meshkit.sample.hermeschat \
-  --json-output "$ARTIFACTS/HermesChat-launch.json" \
-  --log-output "$ARTIFACTS/HermesChat-launch.log" \
-  --timeout 60 || fail "HermesChat install succeeded but launch failed; inspect $ARTIFACTS/HermesChat-launch.log"
+for target in HermesChat DailyMart; do
+  case "$target" in
+    HermesChat) bundle_id="ai.meshkit.sample.hermeschat" ;;
+    DailyMart) bundle_id="ai.meshkit.sample.dailymart" ;;
+    *) fail "No launch bundle id configured for $target" ;;
+  esac
+  log "Launching $target on the iPad"
+  xcrun devicectl device process launch --device "$DEVICE_SELECTOR" "$bundle_id" \
+    --json-output "$ARTIFACTS/$target-launch.json" \
+    --log-output "$ARTIFACTS/$target-launch.log" \
+    --timeout 60 || fail "$target install succeeded but launch failed; inspect $ARTIFACTS/$target-launch.log"
+done
 
 log "Physical iPad install proof complete"
 echo "$ARTIFACTS"

@@ -1,0 +1,334 @@
+goal: Implement a provider-neutral MeshKit/OCG on-chain agent wallet integration with maroo testnet as the demo adapter, delivering an iPad HermesChat to DailyMart flow where delegated spending limits are visible, signed MCP request anchoring is linked to OKRW payment or transfer execution, and DailyMart returns target-owned MeshKit receipts with confirmed, pending, failed, and policy-denied presentation states.
+task_type: code
+brownfield_context:
+  project_type: brownfield
+  primary_repo: /Users/JqLEE/projects/meshkit-new-codebase
+  reference_repo: /Users/JqLEE/projects/meshkit
+  reference_handoff: /Users/JqLEE/projects/meshkit/docs/codex-handoff-2026-05-30.md
+  context_references:
+    - path: /Users/JqLEE/projects/meshkit/docs/codex-handoff-2026-05-30.md
+      role: implementation_reference_handoff
+      summary: Working-reference handoff for the real-device App-to-App MCP flow, saved-grant repeat behavior, DailyMart target-owned receipts, and verification expectations.
+    - path: /Users/JqLEE/projects/meshkit-new-codebase/meshkit-ios/Samples/iOSDemo/HermesChat/HermesChatApp.swift
+      role: hermeschat_demo_app
+      summary: HermesChat iPad demo surface where delegated wallet limits, signed request anchoring, payment states, and repeat saved-grant presentation must be implemented.
+    - path: /Users/JqLEE/projects/meshkit-new-codebase/meshkit-ios/Samples/iOSDemo/DailyMart/DailyMartApp.swift
+      role: dailymart_demo_app
+      summary: DailyMart iPad demo target where request validation, policy checks, maroo adapter execution, and target-owned receipt state presentation must be implemented.
+    - path: /Users/JqLEE/projects/meshkit-new-codebase/meshkit-ios/Sources/MeshKit
+      role: meshkit_sdk_sources
+      summary: MeshKit SDK source tree for provider-neutral chain, request anchor, agent wallet, payment executor, and chain proof models.
+    - path: /Users/JqLEE/projects/meshkit-new-codebase/meshkit-ios/Tests/MeshKitTests/MeshKitTests.swift
+      role: meshkit_swift_tests
+      summary: Swift test target for request hash freshness, policy validation, proof serialization, status rules, and target-owned receipt verification.
+    - path: /Users/JqLEE/projects/meshkit-new-codebase/scripts/install_ios_device.sh
+      role: physical_ipad_install_script
+      summary: Physical iPad install script that must be preserved as the real-device proof path.
+    - path: /Users/JqLEE/projects/meshkit-new-codebase/scripts/verify_mobile_e2e_runtime_docs.py
+      role: deterministic_verification_script
+      summary: Local verification script that should cover delegated wallet labels, receipt presentation states, repeat saved-grant behavior, and required docs/runtime evidence.
+  existing_patterns:
+    - nonce-based MeshSignedRequestBuilder calls for App-to-App MCP invocations
+    - MeshPendingReceiptStore correlation before completion
+    - DailyMart target-owned MeshReceipt signing and HermesChat verification
+    - repeat saved-grant flow using fresh request id, nonce, signature, and receipt
+    - physical iPad install proof through scripts/install_ios_device.sh
+  existing_dependencies:
+    - Swift Package meshkit-ios with MeshKit sources and tests
+    - iOS demo apps HermesChat, DailyMart, and MintNotes in meshkit-ios/Samples/iOSDemo
+    - Python verification scripts under scripts
+    - OCG registry JSON under ocg/registry
+constraints:
+  - Use /Users/JqLEE/projects/meshkit as the implementation reference for the working real-device App-to-App MCP flow.
+  - Preserve the physical iPad flow; do not replace it with a simulator-only proof.
+  - Preserve repeat saved-grant calls after success.
+  - Every saved-grant tap must create a fresh signed MCP request id, nonce, signature, anchoring reference, and target-owned receipt.
+  - Preserve the target-owned DailyMart MeshKit receipt model; Hermes/caller keys must not be accepted as target completion proof.
+  - Preserve scripts/install_ios_device.sh.
+  - Do not commit xcuserdata.
+  - Keep maroo isolated as the concrete MVP provider adapter; do not hard-code maroo into MeshKit/OCG core protocol semantics.
+  - Keep the app-to-app nonce-based signed MCP request as the core trust object.
+  - Blockchain anchoring, payment execution, and chain proof augment request signing and receipt verification; they do not replace them.
+  - Direct maroo Agent Wallet Kit integration is not required for MVP; document it as a replaceable future adapter path.
+  - Prepare the work as three commit-ready units with the deliverable boundaries listed in commit_ready_units.
+  - Run python3 scripts/verify_mobile_e2e_runtime_docs.py before summary.
+  - Run cd meshkit-ios then swift test before summary.
+commit_ready_units:
+  - name: UX/demo
+    deliverables:
+      - HermesChat iPad UI changes in meshkit-ios/Samples/iOSDemo/HermesChat/HermesChatApp.swift
+      - DailyMart iPad UI and receipt-state changes in meshkit-ios/Samples/iOSDemo/DailyMart/DailyMartApp.swift
+      - iOS UI test or verification-script checks for delegated wallet labels, repeat saved-grant, confirmed, pending, failed, and policy-denied states
+  - name: SDK/provider
+    deliverables:
+      - MeshKit provider-neutral chain, anchor, wallet, payment, and proof models under meshkit-ios/Sources/MeshKit
+      - maroo testnet adapter under MeshKit or an adapter module without maroo-specific core receipt fields
+      - Swift tests covering request hash freshness, policy validation, chain proof serialization, status-specific field rules, and target-owned receipt verification
+  - name: protocol/docs
+    deliverables:
+      - OCG/AgentOS docs describing provider abstraction, receipt schema, status rules, maroo adapter configuration, and Agent Wallet Kit future adapter path
+      - README or verification script updates documenting maroo endpoints and required commands
+      - No xcuserdata in git status
+acceptance_criteria:
+  - HermesChat displays a delegated wallet panel labeled AgentOS/OCG delegated wallet with provider maroo testnet, total session limit, remaining limit, per-payment max, asset OKRW, and DailyMart grocery.purchase_essentials scope.
+  - HermesChat decrements remaining limit only after a confirmed OKRW execution receipt.
+  - HermesChat leaves remaining limit unchanged for failed and policy-denied receipts.
+  - HermesChat marks pending receipts as submitted but not final and records no paid or complete order state for pending receipts.
+  - Spending policy validation blocks requests that exceed per-payment max, session remaining limit, merchant/capability scope, expiry window, or consent grant binding before payment execution is attempted.
+  - Policy-denied requests return a target-owned DailyMart MeshKit receipt with status failed, proofType policy_denial, presentationState policy_denied, errorCode, errorMessage, and no txHash.
+  - DailyMart verifies request signature, request payload hash, request nonce freshness, policyId, policyHash, merchant/capability scope, and consentGrantId before request anchoring or OKRW execution.
+  - Each HermesChat to DailyMart app-to-app call creates a fresh request id, request nonce, request signature, request hash, anchoring reference, and target-owned receipt id.
+  - SDK/provider code records signed MCP request hash, request nonce, policyId, and policyHash through RequestAnchor.submitAnchor, with maroo testnet as the concrete adapter.
+  - OKRW payment or transfer execution result is linked to the anchored request through requestHash, anchoringReference, payment txHash for confirmed receipts, policyId, and policyHash.
+  - DailyMart returns a target-owned MeshKit receipt for every verified execution attempt with chain status confirmed, pending, or failed.
+  - HermesChat renders confirmed receipts as paid or complete and displays txHash and explorerUrl.
+  - HermesChat renders pending receipts as submitted but not final and displays submittedAt and anchoringReference.
+  - HermesChat renders failed receipts as attempted but not paid or complete and displays errorCode and errorMessage.
+  - Receipt and debug UI include provider-neutral chain proof fields required by the ontology for each status.
+  - MeshKit exposes provider-neutral minimum capabilities for ChainProvider, RequestAnchor, AgentWallet, PaymentExecutor, and ChainProof.
+  - ChainProvider capability includes provider name, network identity, chain id, RPC endpoint configuration, and explorer URL construction.
+  - RequestAnchor capability includes canonical request hash input, request nonce binding, policyId and policyHash binding, anchor submission, anchor status, and anchoring reference output.
+  - AgentWallet capability includes wallet address reporting, policy validation, signing or submission boundary, and spend limit accounting.
+  - PaymentExecutor capability includes asset, amount, recipient, request hash linkage, execution status, tx hash, and error mapping.
+  - ChainProof serializes into DailyMart target-owned MeshKit receipts without maroo-specific core fields.
+  - maroo testnet adapter implements provider-neutral request anchoring and OKRW payment or transfer behavior behind those capabilities.
+  - Protocol docs describe provider abstraction, receipt schema, status-specific required fields, maroo endpoint configuration, Agent Wallet Kit future adapter path, verification commands, and external-chain outage handling.
+  - Local deterministic verification passes with python3 scripts/verify_mobile_e2e_runtime_docs.py and cd meshkit-ios then swift test.
+  - If maroo testnet, faucet, RPC, explorer, or OKRW contract availability blocks live confirmation, the implementation must document BlockedByExternalChain evidence and must not represent a fallback as a confirmed payment.
+ontology_schema:
+  name: MeshKitChainProofIntegration
+  description: Provider-neutral model for binding signed App-to-App MCP requests, delegated agent wallet spending policies, on-chain request anchoring, payment execution, and target-owned MeshKit receipt verification.
+  constrained_values:
+    demo_apps:
+      hermesChat:
+        appId: app.hermes-chat
+        bundleId: ai.meshkit.sample.hermeschat
+      dailyMart:
+        appId: app.dailymart
+        bundleId: ai.meshkit.sample.dailymart
+    demo_provider:
+      provider: maroo
+      network: maroo testnet
+      rpcEndpoint: https://rpc-testnet.maroo.io
+      explorerBaseUrl: https://explorer-testnet.maroo.io
+    demo_asset:
+      symbol: OKRW
+      unit: okrw
+    demo_capability:
+      merchantScope: DailyMart
+      capabilityScope: grocery.purchase_essentials
+  entities:
+    - name: SignedMCPRequest
+      required_fields:
+        - mcpRequestId
+        - requestNonce
+        - requestHash
+        - requestSignature
+        - callerAppId
+        - targetAppId
+        - capabilityId
+        - payloadHash
+        - timestamp
+    - name: ConsentGrant
+      required_fields:
+        - consentGrantId
+        - callerAppId
+        - targetAppId
+        - merchantScope
+        - capabilityScope
+        - grantedAt
+        - expiresAt
+    - name: DelegatedSpendingPolicy
+      required_fields:
+        - policyId
+        - policyHash
+        - consentGrantId
+        - merchantScope
+        - capabilityScope
+        - singlePaymentMax
+        - sessionTotalLimit
+        - remainingLimit
+        - expiresAt
+        - asset
+    - name: ChainProvider
+      required_fields:
+        - provider
+        - network
+        - chainId
+        - rpcEndpoint
+        - explorerBaseUrl
+      required_capabilities:
+        - constructExplorerUrl(txHash)
+        - identifyNetwork()
+        - loadProviderConfiguration()
+    - name: RequestAnchor
+      required_fields:
+        - requestHash
+        - requestNonce
+        - policyId
+        - policyHash
+        - anchoringReference
+        - anchorStatus
+      required_capabilities:
+        - computeCanonicalRequestHash(request)
+        - submitAnchor(requestHash, requestNonce, policyId, policyHash)
+        - mapAnchorResultToChainProof(result)
+    - name: AgentWallet
+      required_fields:
+        - walletAddress
+        - policyId
+        - remainingLimit
+        - asset
+      required_capabilities:
+        - validatePolicy(spendingPolicy, amount, merchantScope, capabilityScope, consentGrantId)
+        - reportWalletAddress()
+        - accountForConfirmedSpend(amount)
+        - exposeSigningOrSubmissionBoundary()
+    - name: PaymentExecutor
+      required_fields:
+        - asset
+        - amount
+        - recipient
+        - requestHash
+        - status
+      required_capabilities:
+        - executePayment(asset, amount, recipient, requestHash, policyId, policyHash)
+        - mapExecutionResultToChainProof(result)
+        - mapProviderError(error)
+    - name: ChainProof
+      required_fields:
+        - provider
+        - chainId
+        - network
+        - proofType
+        - status
+        - presentationState
+        - requestHash
+        - requestNonce
+        - policyId
+        - policyHash
+        - walletAddress
+        - amount
+        - asset
+        - recipient
+        - anchoringReference
+      optional_fields:
+        - anchorTxHash
+        - txHash
+        - explorerUrl
+        - errorCode
+        - errorMessage
+        - submittedAt
+        - confirmedAt
+      status_enum:
+        - confirmed
+        - pending
+        - failed
+      presentation_state_enum:
+        - paid_complete
+        - submitted_not_final
+        - attempted_failed
+        - policy_denied
+      proof_type_enum:
+        - request_anchor
+        - payment_execution
+        - policy_denial
+    - name: TargetOwnedReceipt
+      required_fields:
+        - receiptId
+        - mcpRequestId
+        - targetAppId
+        - targetBundleId
+        - receiptOwner
+        - targetReceiptOwner
+        - targetSignature
+        - status
+        - timestamp
+        - chainProof
+      ownership_rule: receiptOwner and targetReceiptOwner must identify DailyMart or the target app, never Hermes/caller.
+  conditional_requirements:
+    - condition: status confirmed and proofType payment_execution
+      requires:
+        - txHash
+        - explorerUrl
+        - confirmedAt
+      presentationState: paid_complete
+      forbids:
+        - errorCode
+        - errorMessage
+    - condition: status pending and proofType request_anchor
+      requires:
+        - submittedAt
+        - anchoringReference
+      allows:
+        - anchorTxHash
+        - txHash
+        - explorerUrl
+      presentationState: submitted_not_final
+      forbids:
+        - confirmedAt
+        - errorCode
+        - errorMessage
+    - condition: status failed and proofType payment_execution
+      requires:
+        - errorCode
+        - errorMessage
+      allows:
+        - anchorTxHash
+        - txHash
+        - explorerUrl
+        - submittedAt
+      presentationState: attempted_failed
+      forbids:
+        - confirmedAt
+    - condition: status failed and proofType policy_denial
+      requires:
+        - errorCode
+        - errorMessage
+      presentationState: policy_denied
+      forbids:
+        - txHash
+        - confirmedAt
+qa_followup_resolutions:
+  - policy_denied is not a fourth chain status. It is a presentationState derived from status failed plus proofType policy_denial.
+  - RequestAnchor binds both policyId and policyHash so DailyMart verification, anchoring, and ChainProof use the same policy reference.
+  - ConsentGrant, demo app identities, merchant scope, capability scope, provider, and asset are constrained explicitly for the demo while preserving provider-neutral core semantics.
+  - Verification commands cover local deterministic tests. Live maroo unavailability is handled only through BlockedByExternalChain evidence and cannot be presented as a confirmed payment.
+evaluation_principles:
+  - name: RealDeviceFlowPreservation
+    description: Existing physical iPad App-to-App MCP behavior, install script, saved-grant repeatability, fresh signatures, and target-owned receipts remain intact.
+    weight: 0.25
+  - name: ProviderNeutrality
+    description: MeshKit and OCG model chain, payment, wallet, anchoring, and proof concepts through reusable abstractions with maroo isolated as an adapter.
+    weight: 0.2
+  - name: DemoCompleteness
+    description: HermesChat and DailyMart show a coherent iPad user flow with visible spending limits, OKRW execution attempt, and confirmed, pending, failed, and policy-denied presentation-state handling.
+    weight: 0.2
+  - name: TrustCorrectness
+    description: Completion requires policy-compliant delegated wallet execution plus target-owned MeshKit receipt verification, with status semantics represented accurately.
+    weight: 0.2
+  - name: DocumentationAndVerification
+    description: Protocol docs, schema notes, maroo provider notes, and required verification commands are present and pass.
+    weight: 0.15
+exit_conditions:
+  - name: VerifiedMVP
+    description: Workflow can stop when HermesChat demonstrates delegated wallet limits, request anchoring, OKRW execution attempt, target-owned receipt handling for confirmed/pending/failed/policy-denied outcomes, and required tests pass.
+    criteria: All acceptance criteria are satisfied and verification commands pass.
+  - name: BlockedByExternalChain
+    description: Workflow can stop with documented blocker if maroo testnet, RPC, faucet, explorer, or OKRW contract availability prevents live confirmation despite correct adapter behavior.
+    criteria: Failure is reproducible, pending or failed receipt path works, no local fallback is misrepresented as confirmed payment, and fallback evidence is documented.
+  - name: ScopeBoundaryReached
+    description: Workflow can stop without direct maroo Agent Wallet Kit integration when provider-neutral interfaces and maroo RPC or OKRW adapter are implemented.
+    criteria: Agent Wallet Kit remains documented as a future replaceable adapter path.
+metadata:
+  seed_id: seed_8736deab3644-final
+  version: 1.3.0
+  created_at: '2026-05-31T00:00:00+09:00'
+  ambiguity_score: 0.098
+  interview_id: interview_20260530_112818
+  parent_seed_id: seed_8736deab3644-rev3
+  generation_mode: qa_pass_with_followup_resolutions
+  qa_score_before_followup_resolutions: 0.91
+  degraded: false
+  unresolved_slots: []
+  recovery_reason: null

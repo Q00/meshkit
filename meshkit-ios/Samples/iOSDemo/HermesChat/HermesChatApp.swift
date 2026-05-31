@@ -3,18 +3,20 @@ import SwiftUI
 import MeshKit
 
 private enum SampleMeshSigningKey {
-    // Sample-only key id. The private key is intentionally not checked in.
-    // For local demo builds only, set MESHKIT_IOS_DEMO_PRIVATE_KEY_BASE64 to the raw Ed25519 private key bytes.
+    // Sample-only key id. Env vars can override this for tests, but the installed
+    // demo app needs a stable local key when launched directly from the iPad.
     static let keyId = "sample-ios-ed25519"
+    private static let samplePrivateKeyBase64 = "ciDtnehd8FlWERtZE2lzacQc3/LLIJY0CavAcv0THko="
+    private static let samplePublicKeyBase64 = "SYRITem/8/4woLf6P3Iec58z4jBtxzEB+g+UXeS8mcU="
     static func publicKeyBase64() throws -> String {
-        guard let raw = ProcessInfo.processInfo.environment["MESHKIT_IOS_DEMO_PUBLIC_KEY_BASE64"],
-              !raw.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            throw MeshKitValidationError.signatureRequired
-        }
-        return raw
+        let raw = ProcessInfo.processInfo.environment["MESHKIT_IOS_DEMO_PUBLIC_KEY_BASE64"] ?? samplePublicKeyBase64
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { throw MeshKitValidationError.signatureRequired }
+        return trimmed
     }
     static func privateKey() throws -> Curve25519.Signing.PrivateKey {
-        guard let raw = ProcessInfo.processInfo.environment["MESHKIT_IOS_DEMO_PRIVATE_KEY_BASE64"],
+        let raw = ProcessInfo.processInfo.environment["MESHKIT_IOS_DEMO_PRIVATE_KEY_BASE64"] ?? samplePrivateKeyBase64
+        guard !raw.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
               let data = Data(base64Encoded: raw), !data.isEmpty else {
             throw MeshKitValidationError.signatureRequired
         }
@@ -25,12 +27,12 @@ private enum SampleMeshSigningKey {
 private enum SampleDailyMartReceiptKey {
     // Demo target receipt trust. Hermes only receives the DailyMart public key; the target private key lives in DailyMart/backend test config.
     static let keyId = "sample-dailymart-receipt-ed25519"
+    private static let samplePublicKeyBase64 = "Bauj33zFJH8pAyxeCxrkn9NNjC/dRfPVXn9avxPskyg="
     static func publicKeyBase64() throws -> String {
-        guard let raw = ProcessInfo.processInfo.environment["MESHKIT_IOS_DAILYMART_RECEIPT_PUBLIC_KEY_BASE64"],
-              !raw.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            throw MeshKitValidationError.signatureRequired
-        }
-        return raw
+        let raw = ProcessInfo.processInfo.environment["MESHKIT_IOS_DAILYMART_RECEIPT_PUBLIC_KEY_BASE64"] ?? samplePublicKeyBase64
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { throw MeshKitValidationError.signatureRequired }
+        return trimmed
     }
 }
 
@@ -48,8 +50,11 @@ struct HermesChatApp: App {
     @State private var hasDailyMartConsent = false
     @State private var isSavedConsentCall = false
     @State private var showSavedConsentForegroundAlert = false
+    @State private var confirmedReceiptExplorerURL: URL?
     @State private var pendingReceiptTokens: Set<String> = []
     @State private var pendingReceiptStore = MeshPendingReceiptStore()
+    @State private var delegatedWallet = try! HermesChatDelegatedWalletViewModels.marooTestnetOKRWDailyMartGrocerySession()
+    @State private var delegatedWalletDecrementHandler = MeshDelegatedWalletReceiptDecrementHandler()
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
@@ -62,6 +67,8 @@ struct HermesChatApp: App {
                 hasUserPrompt: hasUserPrompt,
                 isAnalyzingOCG: isAnalyzingOCG,
                 showCallableApps: showCallableApps,
+                delegatedWallet: delegatedWallet,
+                confirmedReceiptExplorerURL: confirmedReceiptExplorerURL,
                 hasDailyMartConsent: hasDailyMartConsent,
                 isSavedConsentCall: isSavedConsentCall,
                 showSavedConsentForegroundAlert: $showSavedConsentForegroundAlert,
@@ -95,18 +102,59 @@ struct HermesChatApp: App {
                     return
                 }
                 if receipt.capability == "grocery.purchase_essentials" {
+                    hasDailyMartConsent = true
                     let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
                     let status = components?.queryItems?.first(where: { $0.name == "status" })?.value ?? "purchased"
                     let auditId = components?.queryItems?.first(where: { $0.name == "audit_id" })?.value ?? receipt.token
+                    let orderState = MeshHermesChatDailyMartOrderStateRecorder.record(
+                        receiptResult: receipt.result,
+                        callbackStatus: status
+                    )
                     if status == "processing" {
                         startDailyMartBackgroundProcessing(auditId: auditId)
-                    } else {
-                        let orderId = receipt.result["order_id"] ?? components?.queryItems?.first(where: { $0.name == "order_id" })?.value ?? "DM-2026-0509-001"
-                        let total = receipt.result["total_krw"] ?? components?.queryItems?.first(where: { $0.name == "total_krw" })?.value ?? "100"
+                    } else if orderState.kind == .policyDenied || orderState.kind == .attemptedFailed {
+                        let displayState = try? delegatedWallet.dailyMartReceiptDisplayState(
+                            afterProcessing: receipt.result,
+                            fallbackAuditId: auditId
+                        )
+                        let presentation = displayState?.paymentPresentation ?? MeshDailyMartReceiptPaymentPresentation(receiptResult: receipt.result, fallbackAuditId: auditId)
+                        confirmedReceiptExplorerURL = nil
                         isBackgroundProcessing = false
-                        lastAction = "DailyMart order confirmed"
-                        callbackText = "✅ DailyMart background checkout complete\nOrder \(orderId) · Total ₩\(total) · Delivery 7–9 PM"
-                        auditTrail = "Target-signed receipt accepted: grocery.purchase_essentials.purchased\nreceipt_token=\(receipt.token) · token_consumed=true · requestId/payloadHash/signature verified."
+                        lastAction = orderState.lastAction
+                        let remainingLimitUnchangedLine = displayState?.remainingLimitUnchangedLine
+                            ?? "Remaining session limit unchanged: \(delegatedWallet.panelSnapshot.remainingLimitLine)"
+                        callbackText = displayState?.renderedLines.joined(separator: "\n")
+                            ?? "\(presentation.title)\n\(presentation.body)\n\(remainingLimitUnchangedLine)"
+                        auditTrail = "Target-signed receipt accepted: \(presentation.auditLine)\nreceipt_token=\(receipt.token) · token_consumed=true · BlockedByExternalChain evidence rendered when present · no txHash accepted as confirmed fallback · no txHash."
+                    } else if orderState.kind == .submittedNotFinal {
+                        let displayState = try? delegatedWallet.dailyMartReceiptDisplayState(
+                            afterProcessing: receipt.result,
+                            fallbackAuditId: auditId
+                        )
+                        let presentation = displayState?.paymentPresentation ?? MeshDailyMartReceiptPaymentPresentation(receiptResult: receipt.result, fallbackAuditId: auditId)
+                        confirmedReceiptExplorerURL = nil
+                        isBackgroundProcessing = false
+                        lastAction = orderState.lastAction
+                        callbackText = displayState?.renderedLines.joined(separator: "\n")
+                            ?? "\(presentation.title)\n\(presentation.body)"
+                        auditTrail = "Target-signed receipt accepted: \(presentation.auditLine)\nreceipt_token=\(receipt.token) · token_consumed=true · BlockedByExternalChain evidence rendered when present · no txHash accepted as confirmed fallback · no txHash."
+                    } else {
+                        let decrement = try? receipt.meshReceipt.map {
+                            try delegatedWalletDecrementHandler.apply(receipt: $0, to: delegatedWallet)
+                        } ?? delegatedWalletDecrementHandler.apply(
+                            receiptId: receipt.receiptId,
+                            receiptResult: receipt.result,
+                            to: delegatedWallet
+                        )
+                        let presentation = MeshDailyMartReceiptPaymentPresentation(receiptResult: receipt.result, fallbackAuditId: auditId)
+                        confirmedReceiptExplorerURL = presentation.explorerURL
+                        if let decrement {
+                            delegatedWallet = decrement.wallet
+                        }
+                        isBackgroundProcessing = false
+                        lastAction = orderState.lastAction
+                        callbackText = "\(presentation.title)\n\(presentation.body)"
+                        auditTrail = "Target-signed receipt accepted: \(presentation.auditLine)\nreceipt_token=\(receipt.token) · token_consumed=true · requestId/payloadHash/signature verified."
                     }
                 } else {
                     isBackgroundProcessing = false
@@ -121,7 +169,9 @@ struct HermesChatApp: App {
     private struct DemoReceipt {
         let capability: String
         let token: String
+        let receiptId: String
         let result: [String: String]
+        let meshReceipt: MeshReceipt?
     }
 
     private func consumeDemoReceipt(from url: URL) -> DemoReceipt? {
@@ -145,7 +195,13 @@ struct HermesChatApp: App {
                     ),
                     maxAgeSeconds: 300
                 )
-                return DemoReceipt(capability: verified.capabilityId, token: verified.requestId, result: verified.result)
+                return DemoReceipt(
+                    capability: verified.capabilityId,
+                    token: verified.requestId,
+                    receiptId: verified.receiptId,
+                    result: verified.result,
+                    meshReceipt: verified
+                )
             } catch {
                 return nil
             }
@@ -155,7 +211,7 @@ struct HermesChatApp: App {
         let capability = components.queryItems?.first(where: { $0.name == "capability" })?.value
             ?? (url.absoluteString.contains("grocery.purchase_essentials") ? "grocery.purchase_essentials" : "notes.append_note")
         guard capability == "notes.append_note" else { return nil }
-        return DemoReceipt(capability: capability, token: token, result: [:])
+        return DemoReceipt(capability: capability, token: token, receiptId: token, result: [:], meshReceipt: nil)
     }
 
     private func startDemoScriptIfNeeded() {
@@ -216,17 +272,17 @@ struct HermesChatApp: App {
         let capability = OpenCapabilityGraph.mintNotesSample.findCapability("notes.append_note")
         let caller = MeshIdentity(appId: "app.hermes-chat", installId: "ios-sim", bundleId: "ai.meshkit.sample.hermeschat", publicKeyId: SampleMeshSigningKey.keyId)
         let target = MeshCapability(targetBundleId: "ai.meshkit.sample.mintnotes", capabilityId: capability?.id ?? "notes.append_note", version: "1.0")
-        let request = try! MeshSignedRequestBuilder(
-            caller: caller,
-            target: target,
-            signer: MeshRequestSigner.ed25519(keyId: SampleMeshSigningKey.keyId, privateKey: try! SampleMeshSigningKey.privateKey())
-        ).makeRequest(
-            requestId: "ios-demo-001",
-            payload: ["text": "Ship MeshKit iOS demo with OCG discovery.", "note_ref": "ios:mint:demo"],
-            nonce: "ios-demo-" + UUID().uuidString,
-            timestamp: ISO8601DateFormatter().string(from: Date())
-        )
         do {
+            let request = try MeshSignedRequestBuilder(
+                caller: caller,
+                target: target,
+                signer: MeshRequestSigner.ed25519(keyId: SampleMeshSigningKey.keyId, privateKey: try SampleMeshSigningKey.privateKey())
+            ).makeRequest(
+                requestId: "ios-demo-001",
+                payload: ["text": "Ship MeshKit iOS demo with OCG discovery.", "note_ref": "ios:mint:demo"],
+                nonce: "ios-demo-" + UUID().uuidString,
+                timestamp: ISO8601DateFormatter().string(from: Date())
+            )
             pendingReceiptTokens.insert("ios-demo-001")
             lastAction = "Opening Mint Notes"
             let url = try MeshURLRouter.invokeURL(scheme: capability?.urlScheme ?? "mintnotes://mesh/invoke", request: request)
@@ -260,33 +316,23 @@ struct HermesChatApp: App {
 
     private func openDailyMart() {
         let capability = OpenCapabilityGraph.dailyMartSample.findCapability("grocery.purchase_essentials")
-        let caller = MeshIdentity(appId: "app.hermes-chat", installId: "ios-sim", bundleId: "ai.meshkit.sample.hermeschat", publicKeyId: SampleMeshSigningKey.keyId)
-        let target = MeshCapability(targetBundleId: "ai.meshkit.sample.dailymart", capabilityId: capability?.id ?? "grocery.purchase_essentials", version: "1.0")
-        let request = try! MeshSignedRequestBuilder(
-            caller: caller,
-            target: target,
-            signer: MeshRequestSigner.ed25519(keyId: SampleMeshSigningKey.keyId, privateKey: try! SampleMeshSigningKey.privateKey())
-        ).makeRequest(
-            requestId: "ios-grocery-001",
-            payload: [
-                "items": "laundry_detergent:1,toilet_paper:2,bottled_water_2l:6",
-                "address_ref": "home.saved",
-                "budget_krw": "100"
-            ],
-            nonce: "ios-grocery-" + UUID().uuidString,
-            timestamp: ISO8601DateFormatter().string(from: Date())
-        )
-        pendingReceiptStore.register(request: request, capabilityId: "grocery.purchase_essentials")
-        lastAction = "Waiting for DailyMart approval"
-        showCallableApps = false
-        isAnalyzingOCG = false
-        isSavedConsentCall = false
-        auditTrail = "Open Calling Graph selected DailyMart: grocery.purchase_essentials. Request signed with nonce/timestamp/payloadHash."
         do {
+            let invocation = try dailyMartInvocationRequestFactory(
+                capabilityId: capability?.id ?? "grocery.purchase_essentials"
+            ).makePurchaseEssentialsAnchoredInvocation(providerIdentity: MeshMarooTestnetChainProvider().identity)
+            let request = invocation.request
+            pendingReceiptStore.register(request: request, capabilityId: "grocery.purchase_essentials")
+            lastAction = "Waiting for DailyMart approval"
+            showCallableApps = false
+            isAnalyzingOCG = false
+            isSavedConsentCall = false
+            auditTrail = "Open Calling Graph selected DailyMart: grocery.purchase_essentials. Request \(request.requestId) signed with fresh nonce/timestamp/payloadHash. anchoring_reference=\(invocation.anchoringReference.anchorId) request_hash=\(invocation.signedRequestHash.value)"
             let url = try MeshURLRouter.invokeURL(scheme: capability?.urlScheme ?? "dailymart://mesh/invoke", request: request)
             UIApplication.shared.open(url)
         } catch {
+            lastAction = "DailyMart call blocked"
             callbackText = "Failed to encode DailyMart MeshRequest: \(error)"
+            auditTrail = "DailyMart invocation blocked before app switch: \(error)"
         }
     }
 
@@ -302,23 +348,51 @@ struct HermesChatApp: App {
         showCallableApps = false
         isAnalyzingOCG = false
         isSavedConsentCall = true
-        pendingReceiptStore.register(request: savedConsentDailyMartRequest(), capabilityId: "grocery.purchase_essentials")
-        startDailyMartBackgroundProcessing(auditId: "ios-grocery-saved-consent-002")
+        do {
+            let invocation = try savedConsentDailyMartInvocation()
+            let request = invocation.request
+            pendingReceiptStore.register(request: request, capabilityId: "grocery.purchase_essentials")
+            auditTrail = "Saved-grant MCP request signed with fresh nonce/timestamp/payloadHash. anchoring_reference=\(invocation.anchoringReference.anchorId) request_hash=\(invocation.signedRequestHash.value)"
+            startDailyMartBackgroundProcessing(auditId: request.requestId)
+        } catch {
+            lastAction = "DailyMart saved-consent call blocked"
+            isBackgroundProcessing = false
+            callbackText = "Failed to prepare DailyMart saved-consent request: \(error)"
+            auditTrail = "DailyMart saved-consent invocation blocked before background call: \(error)"
+        }
     }
 
-    private func savedConsentDailyMartRequest() -> MeshRequest {
-        MeshRequest(
-            requestId: "ios-grocery-saved-consent-002",
-            caller: MeshIdentity(appId: "app.hermes-chat", installId: "ios-sim", bundleId: "ai.meshkit.sample.hermeschat", publicKeyId: SampleMeshSigningKey.keyId),
-            target: MeshCapability(targetBundleId: "ai.meshkit.sample.dailymart", capabilityId: "grocery.purchase_essentials", version: "1.0"),
-            payload: [
-                "items": "laundry_detergent:1,toilet_paper:2,bottled_water_2l:6",
-                "address_ref": "home.saved",
-                "budget_krw": "100"
-            ],
-            nonce: "ios-grocery-saved-consent-002-nonce",
-            timestamp: ISO8601DateFormatter().string(from: Date()),
-            signature: MeshSignature(algorithm: "Ed25519", keyId: SampleMeshSigningKey.keyId, value: "pending-backend-relay-signature")
+    private func savedConsentDailyMartInvocation() throws -> HermesDailyMartAnchoredInvocation {
+        try dailyMartInvocationRequestFactory(
+            capabilityId: "grocery.purchase_essentials",
+            requestIdPrefix: "ios-grocery-saved-consent",
+            noncePrefix: "ios-grocery-saved-consent-nonce"
+        ).makePurchaseEssentialsAnchoredInvocation(providerIdentity: MeshMarooTestnetChainProvider().identity)
+    }
+
+    private func dailyMartInvocationRequestFactory(
+        capabilityId: String,
+        requestIdPrefix: String = "ios-grocery",
+        noncePrefix: String = "ios-grocery-nonce"
+    ) throws -> HermesDailyMartInvocationRequestFactory {
+        try HermesDailyMartInvocationRequestFactory(
+            caller: MeshIdentity(
+                appId: "app.hermes-chat",
+                installId: "ios-device",
+                bundleId: "ai.meshkit.sample.hermeschat",
+                publicKeyId: SampleMeshSigningKey.keyId
+            ),
+            target: MeshCapability(
+                targetBundleId: "ai.meshkit.sample.dailymart",
+                capabilityId: capabilityId,
+                version: "1.0"
+            ),
+            signer: MeshRequestSigner.ed25519(
+                keyId: SampleMeshSigningKey.keyId,
+                privateKey: try SampleMeshSigningKey.privateKey()
+            ),
+            requestIdPrefix: requestIdPrefix,
+            noncePrefix: noncePrefix
         )
     }
 
@@ -337,6 +411,8 @@ private struct HermesRootView: View {
     let hasUserPrompt: Bool
     let isAnalyzingOCG: Bool
     let showCallableApps: Bool
+    let delegatedWallet: MeshDelegatedWalletViewModel
+    let confirmedReceiptExplorerURL: URL?
     let hasDailyMartConsent: Bool
     let isSavedConsentCall: Bool
     @Binding var showSavedConsentForegroundAlert: Bool
@@ -381,7 +457,7 @@ private struct HermesRootView: View {
                                 appPickerMessage
                             }
 
-                            if isBackgroundProcessing || lastAction.contains("confirmed") {
+                            if isBackgroundProcessing || isDailyMartReceiptState {
                                 backgroundStatusMessage
                                 receiptMessage
                             } else if !showCallableApps && !isAnalyzingOCG {
@@ -555,16 +631,19 @@ private struct HermesRootView: View {
                     .foregroundColor(.primary)
                     .lineSpacing(3)
                 HStack(spacing: 6) {
-                    Chip(text: "₩100 budget", color: orange)
+                    Chip(text: "\(plainAmount(delegatedWallet.sessionTotalLimit)) \(delegatedWallet.asset)", color: orange)
                     Chip(text: "Home delivery", color: purple)
-                    Chip(text: "Needs approval", color: .green)
+                    Chip(text: delegatedWallet.provider, color: .green)
                 }
+                delegatedWalletSummary
             }
         }
     }
 
     private var appPickerMessage: some View {
-        IncomingMessage(avatarTint: orange) {
+        let dailyMartAction = delegatedWallet.callableAppPresentation(appName: "DailyMart")
+
+        return IncomingMessage(avatarTint: orange) {
             VStack(alignment: .leading, spacing: 10) {
                 HStack(spacing: 7) {
                     Image(systemName: "sparkles")
@@ -578,7 +657,7 @@ private struct HermesRootView: View {
                     AppActionCard(
                         icon: "cart.fill",
                         title: "DailyMart",
-                        subtitle: "Grant consent → MCP places order → receipt",
+                        subtitle: dailyMartAction.subtitle,
                         color: orange,
                         primary: true
                     )
@@ -610,6 +689,20 @@ private struct HermesRootView: View {
                     .foregroundColor(.secondary)
             }
         }
+    }
+
+    private var delegatedWalletSummary: some View {
+        DelegatedWalletPanel(snapshot: delegatedWallet.panelSnapshot)
+    }
+
+    private var isDailyMartReceiptState: Bool {
+        lastAction.contains("DailyMart OKRW execution")
+            || lastAction.contains("DailyMart order confirmed")
+            || lastAction.contains("DailyMart policy denied")
+    }
+
+    private func plainAmount(_ decimal: Decimal) -> String {
+        NSDecimalNumber(decimal: decimal).stringValue
     }
 
     private var backgroundStatusMessage: some View {
@@ -666,6 +759,15 @@ private struct HermesRootView: View {
                     .foregroundColor(.secondary)
                     .lineSpacing(3)
                     .lineLimit(4)
+
+                if let confirmedReceiptExplorerURL {
+                    Link(destination: confirmedReceiptExplorerURL) {
+                        Label("Open maroo explorer", systemImage: "link.circle.fill")
+                            .font(.system(size: 13, weight: .bold))
+                    }
+                    .accessibilityLabel("Open maroo explorer receipt link")
+                    .accessibilityValue(confirmedReceiptExplorerURL.absoluteString)
+                }
 
                 if hasDailyMartConsent && !isBackgroundProcessing && !isSavedConsentCall {
                     Button(action: prepareDailyMartSavedConsentCall) {
@@ -846,5 +948,50 @@ private struct Chip: View {
             .padding(.vertical, 5)
             .background(color.opacity(0.27))
             .clipShape(Capsule())
+    }
+}
+
+private struct WalletSummaryRow: View {
+    let label: String
+    let value: String
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text(label)
+                .font(.system(size: 11, weight: .black))
+                .foregroundColor(.secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.82)
+                .frame(width: 112, alignment: .leading)
+            Text(value)
+                .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                .foregroundColor(.primary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+        }
+    }
+}
+
+private struct DelegatedWalletPanel: View {
+    let snapshot: MeshDelegatedWalletPanelSnapshot
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(snapshot.headerLabel)
+                .font(.system(size: 13.5, weight: .black, design: .rounded))
+                .foregroundColor(.primary)
+            Text(snapshot.remainingSessionLimitSummaryLine)
+                .font(.system(size: 12, weight: .black, design: .rounded))
+                .foregroundColor(.primary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.82)
+            ForEach(snapshot.rows, id: \.label) { row in
+                WalletSummaryRow(label: row.label, value: row.value)
+            }
+        }
+        .padding(12)
+        .background(Color.black.opacity(0.045))
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .accessibilityLabel(snapshot.accessibilityLabel)
     }
 }

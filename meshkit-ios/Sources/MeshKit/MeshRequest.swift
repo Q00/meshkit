@@ -23,6 +23,53 @@ public struct MeshPayloadHash: Codable, Equatable, Sendable {
     }
 }
 
+public enum MeshRequestPayloadHasher {
+    public static let algorithm = "sha256"
+    public static let nonceBoundVersion = "meshkit-payload-hash/v1"
+
+    public static func canonicalData(for payload: [String: String]) -> Data {
+        let canonicalString = payload.keys.sorted().map { key in
+            "\(escape(key))=\(escape(payload[key] ?? ""))"
+        }.joined(separator: "&")
+        return Data(canonicalString.utf8)
+    }
+
+    public static func canonicalData(for payload: [String: String], nonce: String) -> Data {
+        let canonicalString = [
+            nonceBoundVersion,
+            "nonce=\(escape(nonce))",
+            "payload=\(String(data: canonicalData(for: payload), encoding: .utf8) ?? "")"
+        ].joined(separator: "\n")
+        return Data(canonicalString.utf8)
+    }
+
+    public static func sha256Hex(for payload: [String: String]) -> String {
+        let digest = SHA256.hash(data: canonicalData(for: payload))
+        return digest.map { String(format: "%02x", $0) }.joined()
+    }
+
+    public static func sha256Hex(for payload: [String: String], nonce: String) -> String {
+        let digest = SHA256.hash(data: canonicalData(for: payload, nonce: nonce))
+        return digest.map { String(format: "%02x", $0) }.joined()
+    }
+
+    public static func hash(for payload: [String: String]) -> MeshPayloadHash {
+        MeshPayloadHash(algorithm: algorithm, value: sha256Hex(for: payload))
+    }
+
+    public static func hash(for payload: [String: String], nonce: String) -> MeshPayloadHash {
+        MeshPayloadHash(algorithm: algorithm, value: sha256Hex(for: payload, nonce: nonce))
+    }
+
+    public static func hash(for request: MeshRequest) -> MeshPayloadHash {
+        hash(for: request.payload, nonce: request.nonce)
+    }
+
+    private static func escape(_ value: String) -> String {
+        value.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? value
+    }
+}
+
 public struct MeshRequest: Codable, Equatable, Sendable {
     public let requestId: String
     public let caller: MeshIdentity
@@ -47,8 +94,8 @@ public struct MeshRequest: Codable, Equatable, Sendable {
         self.caller = caller
         self.target = target
         self.payload = payload
-        self.payloadHash = payloadHash ?? MeshPayloadHash(value: MeshRequest.sha256HexForPayload(payload))
         self.nonce = nonce
+        self.payloadHash = payloadHash ?? MeshRequestPayloadHasher.hash(for: payload, nonce: nonce)
         self.timestamp = timestamp
         self.signature = signature
     }
@@ -84,18 +131,14 @@ public struct MeshRequest: Codable, Equatable, Sendable {
     }
 
     public static func canonicalPayloadData(_ payload: [String: String]) -> Data {
-        let sorted = payload.keys.sorted().map { key in
-            "\(escape(key))=\(escape(payload[key] ?? ""))"
-        }.joined(separator: "&")
-        return Data(sorted.utf8)
+        MeshRequestPayloadHasher.canonicalData(for: payload)
     }
 
     public static func sha256HexForPayload(_ payload: [String: String]) -> String {
-        let digest = SHA256.hash(data: canonicalPayloadData(payload))
-        return digest.map { String(format: "%02x", $0) }.joined()
+        MeshRequestPayloadHasher.sha256Hex(for: payload)
     }
 
-    private static func escape(_ value: String) -> String {
-        value.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? value
+    public static func sha256HexForPayload(_ payload: [String: String], nonce: String) -> String {
+        MeshRequestPayloadHasher.sha256Hex(for: payload, nonce: nonce)
     }
 }

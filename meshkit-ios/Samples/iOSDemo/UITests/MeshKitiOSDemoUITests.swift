@@ -52,6 +52,310 @@ final class MeshKitiOSDemoUITests: XCTestCase {
         runDailyMartProductionSimulatorVideoFlow()
     }
 
+    func testDailyMartConfirmedReceiptRendersProviderNeutralChainProofFields() throws {
+        let dailyMart = XCUIApplication(bundleIdentifier: "ai.meshkit.sample.dailymart")
+        dailyMart.launchArguments = ["--confirmed-receipt-ui-proof"]
+        dailyMart.launch()
+
+        XCTAssertTrue(dailyMart.staticTexts["DailyMart"].waitForExistence(timeout: 8))
+        XCTAssertTrue(dailyMart.staticTexts["Order placed"].waitForExistence(timeout: 8))
+        assertVisibleText("Confirmed provider-neutral chain proof", in: dailyMart)
+        assertVisibleElement("confirmed-chain-proof-debug-ui", in: dailyMart)
+
+        let providerNeutralConfirmedFields = [
+            ("provider", "Provider"),
+            ("chainId", "Chain ID"),
+            ("network", "Network"),
+            ("proofType", "Proof type"),
+            ("status", "Status"),
+            ("presentationState", "Presentation"),
+            ("requestHash", "Request hash"),
+            ("requestNonce", "Request nonce"),
+            ("policyId", "Policy ID"),
+            ("policyHash", "Policy hash"),
+            ("walletAddress", "Wallet"),
+            ("amount", "Amount"),
+            ("asset", "Asset"),
+            ("recipient", "Recipient"),
+            ("anchoringReference", "Anchor"),
+            ("txHash", "Tx hash"),
+            ("explorerUrl", "Explorer"),
+            ("confirmedAt", "Confirmed at"),
+            ("providerExtensions", "Provider extensions")
+        ]
+
+        for (_, label) in providerNeutralConfirmedFields {
+            assertVisibleText(label, in: dailyMart)
+        }
+
+        for (schemaName, _) in providerNeutralConfirmedFields {
+            assertVisibleElement("chain-proof-field-\(schemaName)", in: dailyMart)
+        }
+
+        for value in [
+            "maroo",
+            "maroo-testnet-1",
+            "maroo-testnet",
+            "payment_execution",
+            "confirmed",
+            "paid_complete",
+            "ios-grocery-confirmed-ui-nonce",
+            "policy-hermes-dailymart-okrw-v1",
+            "maroo1dailyMartAgentWallet",
+            "100",
+            "OKRW",
+            "request-anchor-sha256-",
+            "0xokrwDailyMartConfirmedUIReceipt",
+            "https://explorer-testnet.maroo.io/tx/0xokrwDailyMartConfirmedUIReceipt",
+            "2026-05-31T12:00:00Z",
+            "none"
+        ] {
+            assertVisibleText(value, in: dailyMart)
+        }
+    }
+
+    func testDailyMartPendingReceiptRendersProviderNeutralChainProofFields() throws {
+        let dailyMart = XCUIApplication(bundleIdentifier: "ai.meshkit.sample.dailymart")
+        dailyMart.launchArguments = ["--pending-receipt-ui-proof"]
+        dailyMart.launch()
+
+        XCTAssertTrue(dailyMart.staticTexts["DailyMart"].waitForExistence(timeout: 8))
+        assertVisibleText("Pending provider-neutral chain proof", in: dailyMart)
+        assertVisibleElement("pending-chain-proof-debug-ui", in: dailyMart)
+
+        let providerNeutralPendingFields = [
+            ("provider", "Provider"),
+            ("chainId", "Chain ID"),
+            ("network", "Network"),
+            ("proofType", "Proof type"),
+            ("status", "Status"),
+            ("presentationState", "Presentation"),
+            ("requestHash", "Request hash"),
+            ("requestNonce", "Request nonce"),
+            ("policyId", "Policy ID"),
+            ("policyHash", "Policy hash"),
+            ("walletAddress", "Wallet"),
+            ("amount", "Amount"),
+            ("asset", "Asset"),
+            ("recipient", "Recipient"),
+            ("anchoringReference", "Anchor"),
+            ("executionAttemptId", "Execution attempt"),
+            ("paymentId", "Payment ID"),
+            ("authorizationId", "Authorization ID"),
+            ("executionId", "Execution ID"),
+            ("executionKind", "Execution kind"),
+            ("anchorTxHash", "Anchor tx hash"),
+            ("submittedAt", "Submitted at"),
+            ("externalChainExitCondition", "External chain"),
+            ("externalChainBlockerType", "Blocker type"),
+            ("externalChainOperation", "Operation"),
+            ("externalChainEndpoint", "Endpoint"),
+            ("externalChainMessage", "Message")
+        ]
+
+        for (_, label) in providerNeutralPendingFields {
+            assertVisibleText(label, in: dailyMart)
+        }
+
+        for (schemaName, _) in providerNeutralPendingFields {
+            assertVisibleElement("chain-proof-field-\(schemaName)", in: dailyMart)
+        }
+
+        for value in [
+            "maroo",
+            "maroo-testnet-1",
+            "maroo-testnet",
+            "payment_execution",
+            "pending",
+            "submitted_not_final",
+            "ios-grocery-pending-ui-nonce",
+            "policy-hermes-dailymart-okrw-v1",
+            "maroo1dailyMartAgentWallet",
+            "100",
+            "OKRW",
+            "request-anchor-sha256-",
+            "meshkit-execution-attempt/v1:pay-pending-ui:auth-pending-ui:exec-pending-ui",
+            "pay-pending-ui",
+            "auth-pending-ui",
+            "exec-pending-ui",
+            "payment",
+            "0xanchorDailyMartPendingUIReceipt",
+            "2026-05-31T12:05:00Z",
+            "BlockedByExternalChain",
+            "payment_confirmation_unavailable",
+            "executeOKRWTransfer",
+            "https://rpc-testnet.maroo.io",
+            "maroo live OKRW confirmation is unavailable for this demo run"
+        ] {
+            assertVisibleText(value, in: dailyMart)
+        }
+
+        XCTAssertFalse(
+            dailyMart.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "Tx hash")).firstMatch.exists,
+            "Pending receipt UI must not render a payment txHash field as proof of completion"
+        )
+        XCTAssertFalse(
+            dailyMart.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "Order placed")).firstMatch.exists,
+            "Pending receipt UI must not present the order as paid or complete"
+        )
+    }
+
+    func testDailyMartFailedReceiptRendersProviderNeutralChainProofFields() throws {
+        let dailyMart = XCUIApplication(bundleIdentifier: "ai.meshkit.sample.dailymart")
+        dailyMart.launchArguments = ["--failed-receipt-ui-proof"]
+        dailyMart.launch()
+
+        XCTAssertTrue(dailyMart.staticTexts["DailyMart"].waitForExistence(timeout: 8))
+        assertVisibleText("Failed provider-neutral chain proof", in: dailyMart)
+        assertVisibleElement("failed-chain-proof-debug-ui", in: dailyMart)
+
+        let providerNeutralFailedFields = [
+            ("provider", "Provider"),
+            ("chainId", "Chain ID"),
+            ("network", "Network"),
+            ("proofType", "Proof type"),
+            ("status", "Status"),
+            ("presentationState", "Presentation"),
+            ("requestHash", "Request hash"),
+            ("requestNonce", "Request nonce"),
+            ("policyId", "Policy ID"),
+            ("policyHash", "Policy hash"),
+            ("walletAddress", "Wallet"),
+            ("amount", "Amount"),
+            ("asset", "Asset"),
+            ("recipient", "Recipient"),
+            ("anchoringReference", "Anchor"),
+            ("executionAttemptId", "Execution attempt"),
+            ("paymentId", "Payment ID"),
+            ("authorizationId", "Authorization ID"),
+            ("executionId", "Execution ID"),
+            ("executionKind", "Execution kind"),
+            ("anchorTxHash", "Anchor tx hash"),
+            ("errorCode", "Error code"),
+            ("errorMessage", "Error message"),
+            ("externalChainExitCondition", "External chain"),
+            ("externalChainBlockerType", "Blocker type"),
+            ("externalChainOperation", "Operation"),
+            ("externalChainEndpoint", "Endpoint"),
+            ("externalChainMessage", "Message")
+        ]
+
+        for (_, label) in providerNeutralFailedFields {
+            assertVisibleText(label, in: dailyMart)
+        }
+
+        for (schemaName, _) in providerNeutralFailedFields {
+            assertVisibleElement("chain-proof-field-\(schemaName)", in: dailyMart)
+        }
+
+        for value in [
+            "maroo",
+            "maroo-testnet-1",
+            "maroo-testnet",
+            "payment_execution",
+            "failed",
+            "attempted_failed",
+            "ios-grocery-failed-ui-nonce",
+            "policy-hermes-dailymart-okrw-v1",
+            "maroo1dailyMartAgentWallet",
+            "100",
+            "OKRW",
+            "request-anchor-sha256-",
+            "meshkit-execution-attempt/v1:pay-failed-ui:auth-failed-ui:exec-failed-ui",
+            "pay-failed-ui",
+            "auth-failed-ui",
+            "exec-failed-ui",
+            "payment",
+            "0xanchorDailyMartFailedUIReceipt",
+            "payment_confirmation_unavailable",
+            "maroo RPC did not return a transaction receipt",
+            "BlockedByExternalChain",
+            "executeOKRWTransfer",
+            "https://rpc-testnet.maroo.io"
+        ] {
+            assertVisibleText(value, in: dailyMart)
+        }
+
+        XCTAssertFalse(
+            dailyMart.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "Tx hash")).firstMatch.exists,
+            "Failed receipt UI must not render a payment txHash field as proof of completion"
+        )
+        XCTAssertFalse(
+            dailyMart.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "Order placed")).firstMatch.exists,
+            "Failed receipt UI must not present the order as paid or complete"
+        )
+    }
+
+    func testDailyMartPolicyDeniedReceiptRendersProviderNeutralChainProofFields() throws {
+        let dailyMart = XCUIApplication(bundleIdentifier: "ai.meshkit.sample.dailymart")
+        dailyMart.launchArguments = ["--policy-denied-receipt-ui-proof"]
+        dailyMart.launch()
+
+        XCTAssertTrue(dailyMart.staticTexts["DailyMart"].waitForExistence(timeout: 8))
+        assertVisibleText("Policy-denied provider-neutral chain proof", in: dailyMart)
+        assertVisibleElement("policy-denied-chain-proof-debug-ui", in: dailyMart)
+
+        let providerNeutralPolicyDeniedFields = [
+            ("provider", "Provider"),
+            ("chainId", "Chain ID"),
+            ("network", "Network"),
+            ("proofType", "Proof type"),
+            ("status", "Status"),
+            ("presentationState", "Presentation"),
+            ("requestHash", "Request hash"),
+            ("requestNonce", "Request nonce"),
+            ("policyId", "Policy ID"),
+            ("policyHash", "Policy hash"),
+            ("walletAddress", "Wallet"),
+            ("amount", "Amount"),
+            ("asset", "Asset"),
+            ("recipient", "Recipient"),
+            ("anchoringReference", "Anchor"),
+            ("executionAttemptId", "Execution attempt"),
+            ("executionId", "Execution ID"),
+            ("errorCode", "Error code"),
+            ("errorMessage", "Error message")
+        ]
+
+        for (schemaName, _) in providerNeutralPolicyDeniedFields {
+            assertVisibleElement("chain-proof-field-\(schemaName)", in: dailyMart)
+        }
+
+        for (_, label) in providerNeutralPolicyDeniedFields {
+            assertVisibleText(label, in: dailyMart)
+        }
+
+        for value in [
+            "maroo",
+            "maroo-testnet-1",
+            "maroo-testnet",
+            "policy_denial",
+            "failed",
+            "policy_denied",
+            "ios-grocery-policy-denied-ui-nonce",
+            "policy-hermes-dailymart-okrw-v1",
+            "maroo1dailyMartAgentWallet",
+            "250",
+            "OKRW",
+            "request-anchor-sha256-",
+            "meshkit-execution-attempt/v1:policy-denied-ui:wallet-policy:exec-policy-denied-ui",
+            "exec-policy-denied-ui",
+            "wallet_policy_denied",
+            "policy-single-payment-max-exceeded"
+        ] {
+            assertVisibleText(value, in: dailyMart)
+        }
+
+        XCTAssertFalse(
+            dailyMart.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "Tx hash")).firstMatch.exists,
+            "Policy-denied receipt UI must not render a payment txHash field"
+        )
+        XCTAssertFalse(
+            dailyMart.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "Order placed")).firstMatch.exists,
+            "Policy-denied receipt UI must not present the order as paid or complete"
+        )
+    }
+
     private func runDailyMartProductionSimulatorVideoFlow() {
         let hermes = XCUIApplication(bundleIdentifier: "ai.meshkit.sample.hermeschat")
         configureHermesDemoSigning(hermes)
@@ -115,6 +419,13 @@ final class MeshKitiOSDemoUITests: XCTestCase {
     }
 
     private func runDailyMartPurchaseFlow(pressHomeDuringBackgroundCheckout: Bool, performSavedConsentSecondCall: Bool = false) {
+        let dailyMart = XCUIApplication(bundleIdentifier: "ai.meshkit.sample.dailymart")
+        configureDailyMartReceiptSigning(dailyMart)
+        configureTargetRequestTrust(dailyMart)
+        dailyMart.launch()
+        XCTAssertTrue(dailyMart.staticTexts["DailyMart"].waitForExistence(timeout: 8))
+        dailyMart.terminate()
+
         let hermes = XCUIApplication(bundleIdentifier: "ai.meshkit.sample.hermeschat")
         configureHermesDemoSigning(hermes)
         hermes.launch()
@@ -126,7 +437,6 @@ final class MeshKitiOSDemoUITests: XCTestCase {
         buyButton.tap()
         tapSystemOpenIfPresent()
 
-        let dailyMart = XCUIApplication(bundleIdentifier: "ai.meshkit.sample.dailymart")
         XCTAssertTrue(dailyMart.staticTexts["DailyMart"].waitForExistence(timeout: 8))
         XCTAssertTrue(dailyMart.staticTexts["Target app • grocery.purchase_essentials"].exists)
         XCTAssertTrue(dailyMart.staticTexts["Review consent request"].exists)
@@ -136,11 +446,12 @@ final class MeshKitiOSDemoUITests: XCTestCase {
         XCTAssertTrue(approveButton.waitForExistence(timeout: 8))
         approveButton.tap()
         confirmDailyMartConsentModal(dailyMart)
+        tapSystemOpenIfPresent()
         hermes.activate()
 
         XCTAssertTrue(hermes.staticTexts["Hermes Hub"].waitForExistence(timeout: 8))
-        XCTAssertTrue(hermes.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "DailyMart background MCP checkout running")).firstMatch.waitForExistence(timeout: 8))
-        XCTAssertTrue(hermes.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "DailyMart places the order through a scoped background MCP call")).firstMatch.waitForExistence(timeout: 8))
+        XCTAssertTrue(hermes.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "DailyMart OKRW execution submitted")).firstMatch.waitForExistence(timeout: 8))
+        XCTAssertTrue(hermes.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "Target-signed receipt accepted")).firstMatch.waitForExistence(timeout: 8))
 
         if pressHomeDuringBackgroundCheckout {
             XCUIDevice.shared.press(.home)
@@ -152,7 +463,7 @@ final class MeshKitiOSDemoUITests: XCTestCase {
 
         let callback = hermes.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "grocery.purchase_essentials")).firstMatch
         XCTAssertTrue(callback.waitForExistence(timeout: pressHomeDuringBackgroundCheckout ? 2 : 8))
-        XCTAssertTrue(hermes.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "DailyMart order confirmed")).firstMatch.waitForExistence(timeout: pressHomeDuringBackgroundCheckout ? 2 : 8))
+        XCTAssertTrue(hermes.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "DailyMart OKRW execution submitted")).firstMatch.waitForExistence(timeout: pressHomeDuringBackgroundCheckout ? 2 : 8))
 
         if performSavedConsentSecondCall {
             let savedConsentButton = hermes.buttons["Call DailyMart again with saved consent"]
@@ -269,5 +580,42 @@ final class MeshKitiOSDemoUITests: XCTestCase {
             openEnglish.tap()
             return
         }
+    }
+
+    private func assertVisibleText(_ text: String, in app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) {
+        let predicate = NSPredicate(format: "label CONTAINS %@", text)
+        for _ in 0..<6 {
+            app.swipeDown()
+        }
+        var match = app.staticTexts.containing(predicate).firstMatch
+        if match.waitForExistence(timeout: 1.0) {
+            return
+        }
+        for _ in 0..<8 {
+            app.swipeUp()
+            match = app.staticTexts.containing(predicate).firstMatch
+            if match.waitForExistence(timeout: 0.8) {
+                return
+            }
+        }
+        XCTFail("Expected visible text containing \(text)", file: file, line: line)
+    }
+
+    private func assertVisibleElement(_ identifier: String, in app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) {
+        for _ in 0..<6 {
+            app.swipeDown()
+        }
+        var match = app.descendants(matching: .any).matching(identifier: identifier).firstMatch
+        if match.waitForExistence(timeout: 1.0) {
+            return
+        }
+        for _ in 0..<8 {
+            app.swipeUp()
+            match = app.descendants(matching: .any).matching(identifier: identifier).firstMatch
+            if match.waitForExistence(timeout: 0.8) {
+                return
+            }
+        }
+        XCTFail("Expected visible element with identifier \(identifier)", file: file, line: line)
     }
 }

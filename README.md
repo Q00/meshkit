@@ -94,3 +94,50 @@ The first implementation keeps validation local and deterministic. The blockchai
 - revocation and dispute evidence
 
 The app remains the execution boundary. The chain becomes the shared trust and audit layer.
+
+## maroo Agent Wallet demo boundary
+
+The iPad demo uses maroo testnet as a replaceable MeshKit provider adapter, not as a core protocol dependency:
+
+- Config schema: `meshkit-maroo-testnet-adapter-config/v1`
+- `rpcEndpoint`: `https://rpc-testnet.maroo.io`
+- `explorerBaseURL`: `https://explorer-testnet.maroo.io`
+- `faucetURL`: `https://faucet.maroo.io`
+- `agentWalletKitBaseURL`: `https://agent.maroo.io`
+- `docsURL`: `https://docs.maroo.io`
+
+Runtime environment variables used by the maroo demo adapter path:
+
+- `MESHKIT_IOS_MAROO_LIVE_TX_HASH`: required only to present a confirmed live OKRW payment receipt proof.
+- `MESHKIT_IOS_MAROO_ANCHOR_TX_HASH`: optional live request-anchor transaction reference.
+- `MESHKIT_MAROO_OKRW_CONTRACT_ADDRESS`: optional OKRW contract address for the availability probe.
+
+MeshKit anchors and proves only provider-neutral commitments: signed MCP request hash, request nonce, policy id, policy hash, anchoring reference, execution status, and transaction/explorer references when a provider returns them. Plaintext cart items, delivery address references, user identity, consent text, and private request payloads must not be placed in maroo transaction metadata or receipt core fields.
+
+If maroo RPC, faucet, explorer, OKRW contract availability, or device signing prevents a live confirmation, the demo must report `BlockedByExternalChain` evidence and must not present a deterministic fallback transaction hash as a confirmed payment. Availability evidence is serialized with a provider-neutral blocker type such as `rpc_unavailable`, `explorer_unavailable`, `faucet_unavailable`, `okrw_contract_unavailable`, or `payment_confirmation_unavailable`, plus the endpoint, operation, observed time, and any signed request hash/nonce/anchoring reference available at the failure boundary.
+
+To verify public testnet availability before a live demo:
+
+```bash
+python3 scripts/verify_maroo_testnet_status.py
+
+curl -sS https://rpc-testnet.maroo.io \
+  -H 'content-type: application/json' \
+  --data '{"jsonrpc":"2.0","id":1,"method":"eth_blockNumber","params":[]}'
+
+curl -sS https://rpc-testnet.maroo.io \
+  -H 'content-type: application/json' \
+  --data '{"jsonrpc":"2.0","id":2,"method":"net_version","params":[]}'
+
+MESHKIT_MAROO_OKRW_CONTRACT_ADDRESS=0x... python3 scripts/verify_maroo_testnet_status.py
+```
+
+The script writes `artifacts/maroo-testnet/status.json` with the latest public RPC and explorer probe. When `MESHKIT_MAROO_OKRW_CONTRACT_ADDRESS` is set, it also probes OKRW contract bytecode with `eth_getCode` and emits `okrw_contract_unavailable` evidence if no deployed bytecode is returned. Passing this check only proves endpoint availability; a confirmed OKRW payment still requires a funded testnet wallet or Agent Wallet Kit/live adapter path and a real tx hash.
+
+For physical iPad proof, run `scripts/install_ios_device.sh`. If Xcode reports `No Accounts`, `No profiles for ai.meshkit.sample.hermeschat`, or `requires a development team`, sign into Xcode Settings > Accounts and rerun with a valid team, for example:
+
+```bash
+DEVELOPMENT_TEAM=<APPLE_TEAM_ID> scripts/install_ios_device.sh
+```
+
+Those provisioning failures are device-signing blockers, not confirmed MeshKit runtime failures.

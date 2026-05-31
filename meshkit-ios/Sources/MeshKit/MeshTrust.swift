@@ -136,6 +136,12 @@ public enum MeshKitValidationError: Error, Equatable, CustomStringConvertible {
     case productionDisabled(String)
     case invalidSecurityField(String)
     case receiptCorrelationMismatch
+    case invalidChainProviderIdentity(String)
+    case invalidAgentWalletIdentity(String)
+    case invalidPaymentExecution(String)
+    case invalidChainProof(String)
+    case chainProviderExplorerUnavailable
+    case requestAnchorReferenceNotFound(String)
 
     public var description: String {
         switch self {
@@ -161,6 +167,12 @@ public enum MeshKitValidationError: Error, Equatable, CustomStringConvertible {
         case .productionDisabled(let reason): return "production invocation disabled: \(reason)"
         case .invalidSecurityField(let field): return "invalid security field: \(field)"
         case .receiptCorrelationMismatch: return "target receipt does not match a pending request token"
+        case .invalidChainProviderIdentity(let field): return "invalid chain provider identity field: \(field)"
+        case .invalidAgentWalletIdentity(let field): return "invalid agent wallet identity field: \(field)"
+        case .invalidPaymentExecution(let field): return "invalid payment execution field: \(field)"
+        case .invalidChainProof(let field): return "invalid chain proof field: \(field)"
+        case .chainProviderExplorerUnavailable: return "chain provider explorer base URL is unavailable"
+        case .requestAnchorReferenceNotFound(let anchorId): return "request anchor reference not found: \(anchorId)"
         }
     }
 }

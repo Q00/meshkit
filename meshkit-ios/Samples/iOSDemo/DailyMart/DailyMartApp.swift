@@ -4,20 +4,53 @@ import MeshKit
 
 
 private enum HermesRequestSigningTrust {
+    private static let samplePublicKeyBase64 = "SYRITem/8/4woLf6P3Iec58z4jBtxzEB+g+UXeS8mcU="
+
     static func publicKeyBase64() throws -> String {
-        guard let raw = ProcessInfo.processInfo.environment["MESHKIT_IOS_DEMO_PUBLIC_KEY_BASE64"],
-              !raw.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            throw MeshKitValidationError.signatureRequired
-        }
-        return raw
+        let raw = ProcessInfo.processInfo.environment["MESHKIT_IOS_DEMO_PUBLIC_KEY_BASE64"] ?? samplePublicKeyBase64
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { throw MeshKitValidationError.signatureRequired }
+        return trimmed
+    }
+
+    static func dailyMartVerifier() throws -> DailyMartSignedMCPRequestVerifier {
+        try DailyMartSignedMCPRequestVerifier(
+            expectedHermesAgentSigner: MeshSenderTrust(
+                callerAppId: "app.hermes-chat",
+                callerBundleId: "ai.meshkit.sample.hermeschat",
+                teamId: "DEVTEAMID",
+                requestSigningAlgorithm: "Ed25519",
+                requestSigningKeyId: "sample-ios-ed25519",
+                publicKey: try publicKeyBase64()
+            )
+        )
+    }
+
+    static func dailyMartPreExecutionGuard(
+        freshnessStore: DailyMartRequestNonceFreshnessStore
+    ) throws -> DailyMartPreExecutionMCPGuard {
+        try DailyMartPreExecutionMCPGuard(
+            expectedHermesAgentSigner: MeshSenderTrust(
+                callerAppId: "app.hermes-chat",
+                callerBundleId: "ai.meshkit.sample.hermeschat",
+                teamId: "DEVTEAMID",
+                requestSigningAlgorithm: "Ed25519",
+                requestSigningKeyId: "sample-ios-ed25519",
+                publicKey: try publicKeyBase64()
+            ),
+            freshnessStore: freshnessStore,
+            walletPolicyGuard: try DailyMartPreExecutionWalletPolicyGuard()
+        )
     }
 }
 
 private enum DailyMartReceiptSigningKey {
     static let keyId = "sample-dailymart-receipt-ed25519"
+    private static let samplePrivateKeyBase64 = "LaXmm9S12JqU7R/y9sufJiShgajyWCkyFeGazh4qhb0="
 
     static func privateKey() throws -> Curve25519.Signing.PrivateKey {
-        guard let raw = ProcessInfo.processInfo.environment["MESHKIT_IOS_DAILYMART_RECEIPT_PRIVATE_KEY_BASE64"],
+        let raw = ProcessInfo.processInfo.environment["MESHKIT_IOS_DAILYMART_RECEIPT_PRIVATE_KEY_BASE64"] ?? samplePrivateKeyBase64
+        guard !raw.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
               let data = Data(base64Encoded: raw), !data.isEmpty else {
             throw MeshKitValidationError.signatureRequired
         }
@@ -32,10 +65,14 @@ struct DailyMartApp: App {
     @State private var orderId = "DM-2026-0509-001"
     @State private var orderSource = "saved-consent background MCP"
     @State private var auditTrail = "Consent and execution history will appear here."
+    @State private var receiptChainProofTitle = "Confirmed provider-neutral chain proof"
+    @State private var receiptChainProofAccessibilityPrefix = "Confirmed chain proof"
+    @State private var receiptChainProofFields: [DailyMartReceiptProofField] = []
     @State private var request: MeshRequest?
     @State private var isProcessing = false
     @State private var didCompleteOrder = false
     private let replayCache = MeshReplayCache()
+    private let preExecutionFreshnessStore = DailyMartRequestNonceFreshnessStore()
 
     var body: some Scene {
         WindowGroup {
@@ -45,6 +82,9 @@ struct DailyMartApp: App {
                 orderId: orderId,
                 orderSource: orderSource,
                 auditTrail: auditTrail,
+                receiptChainProofTitle: receiptChainProofTitle,
+                receiptChainProofAccessibilityPrefix: receiptChainProofAccessibilityPrefix,
+                receiptChainProofFields: receiptChainProofFields,
                 hasRequest: request != nil,
                 isProcessing: isProcessing,
                 didCompleteOrder: didCompleteOrder,
@@ -60,10 +100,27 @@ struct DailyMartApp: App {
     }
 
     private func handleLaunchArgumentsIfNeeded() {
+        if ProcessInfo.processInfo.arguments.contains("--confirmed-receipt-ui-proof") {
+            showConfirmedReceiptUIProof()
+            return
+        }
+        if ProcessInfo.processInfo.arguments.contains("--pending-receipt-ui-proof") {
+            showPendingReceiptUIProof()
+            return
+        }
+        if ProcessInfo.processInfo.arguments.contains("--failed-receipt-ui-proof") {
+            showFailedReceiptUIProof()
+            return
+        }
+        if ProcessInfo.processInfo.arguments.contains("--policy-denied-receipt-ui-proof") {
+            showPolicyDeniedReceiptUIProof()
+            return
+        }
         if ProcessInfo.processInfo.arguments.contains("--demo-received-request") {
             request = demoMeshRequest(requestId: "ios-grocery-001")
             orderId = "DM-2026-0509-001"
             orderSource = "foreground consent grant"
+            receiptChainProofFields = []
             didCompleteOrder = false
             isProcessing = false
             order = "No order yet."
@@ -76,26 +133,205 @@ struct DailyMartApp: App {
             let savedConsentRequest = demoMeshRequest(requestId: "ios-grocery-saved-consent-002")
             let receipt = try signedReceipt(for: savedConsentRequest, orderId: "DM-2026-0509-002")
             let encoded = try receipt.encodedForURLScheme()
-            let callback = "meshkit-hermes://callback?status=purchased&receipt_token=\(urlEscape(savedConsentRequest.requestId))&mesh_receipt=\(urlEscape(encoded))"
-            UIApplication.shared.open(URL(string: callback)!)
+            let chainStatus = receipt.result["chainStatus"] ?? "pending"
+            let callbackStatus = chainStatus == "confirmed" ? "purchased" : "submitted"
+            openHermesCallback(status: callbackStatus, requestId: savedConsentRequest.requestId, encodedReceipt: encoded)
             request = nil
             isProcessing = false
-            didCompleteOrder = true
+            didCompleteOrder = chainStatus == "confirmed"
             orderId = "DM-2026-0509-002"
             orderSource = "saved-consent background MCP"
-            incoming = "Target-owned signed receipt emitted · saved-consent background MCP · approval_screen=false"
-            order = "Order DM-2026-0509-002 — 주문 완료\n• 세탁세제 × 1\n• 화장지 × 2\n• 생수 2L × 6\nTotal: ₩100\nDelivery: 오늘 19:00–21:00"
-            auditTrail = "grocery.purchase_essentials.executed\nrequest_id=\(receipt.requestId)\nbackground=true\nsource=saved-consent background MCP\napproval_screen=false\nmesh_receipt_signed=true"
+            if didCompleteOrder {
+                incoming = "Target-owned signed confirmed receipt emitted · saved-consent background MCP · approval_screen=false"
+                order = "Order DM-2026-0509-002 — 주문 완료\n• 세탁세제 × 1\n• 화장지 × 2\n• 생수 2L × 6\nTotal: ₩100\nDelivery: 오늘 19:00–21:00"
+                auditTrail = "grocery.purchase_essentials.executed\nrequest_id=\(receipt.requestId)\nbackground=true\nsource=saved-consent background MCP\napproval_screen=false\nmesh_receipt_signed=true\nchain_status=confirmed\ntx_hash=\(receipt.result["txHash"] ?? "")"
+                receiptChainProofTitle = "Confirmed provider-neutral chain proof"
+                receiptChainProofAccessibilityPrefix = "Confirmed chain proof"
+                receiptChainProofFields = DailyMartReceiptProofField.confirmedFields(from: receipt.result)
+            } else {
+                incoming = "Target-owned pending receipt emitted · maroo live confirmation blocked · approval_screen=false"
+                order = "OKRW execution submitted. No order is marked paid until maroo returns a live confirmed txHash."
+                auditTrail = "grocery.purchase_essentials.blocked\nreason=BlockedByExternalChain\nrequest_id=\(receipt.requestId)\nbackground=true\nsource=saved-consent background MCP\napproval_screen=false\nmesh_receipt_signed=true\nchain_status=\(chainStatus)\nanchoring_reference=\(receipt.result["anchoringReference"] ?? "")"
+                receiptChainProofTitle = "Pending provider-neutral chain proof"
+                receiptChainProofAccessibilityPrefix = "Pending chain proof"
+                receiptChainProofFields = DailyMartReceiptProofField.pendingFields(from: receipt.result)
+            }
         } catch {
             request = nil
             isProcessing = false
             didCompleteOrder = false
             orderId = "DM-2026-0509-002"
             orderSource = "saved-consent background MCP"
+            receiptChainProofFields = []
             incoming = "Saved-consent proof blocked: DailyMart receipt signing key unavailable."
             order = "No order marked complete without a target-signed MeshReceipt."
             auditTrail = "grocery.purchase_essentials.blocked\nreason=missing_target_receipt_signature\nerror=\(error)"
         }
+    }
+
+    private func showConfirmedReceiptUIProof() {
+        let requestHash = String(repeating: "a", count: 64)
+        let policyHash = DailyMartDelegatedSpendingPolicy.policyHash.value
+        let result = [
+            "chainProvider": "maroo",
+            "chainId": "maroo-testnet-1",
+            "chainNetwork": "maroo-testnet",
+            "chainProofType": "payment_execution",
+            "chainStatus": "confirmed",
+            "presentationState": "paid_complete",
+            "requestHash": requestHash,
+            "requestNonce": "ios-grocery-confirmed-ui-nonce",
+            "policyId": DailyMartDelegatedSpendingPolicy.policyId,
+            "policyHash": policyHash,
+            "walletAddress": "maroo1dailyMartAgentWallet",
+            "amount": "100",
+            "asset": DailyMartDelegatedSpendingPolicy.asset,
+            "recipient": DailyMartDelegatedSpendingPolicy.recipientAddress,
+            "anchoringReference": "request-anchor-sha256-\(requestHash)",
+            "txHash": "0xokrwDailyMartConfirmedUIReceipt",
+            "explorerUrl": "https://explorer-testnet.maroo.io/tx/0xokrwDailyMartConfirmedUIReceipt",
+            "confirmedAt": "2026-05-31T12:00:00Z",
+            "providerExtensions": "none"
+        ]
+        request = nil
+        isProcessing = false
+        didCompleteOrder = true
+        orderId = "DM-2026-0509-UI"
+        orderSource = "confirmed receipt UI test"
+        incoming = "Target-owned signed confirmed receipt accepted · provider-neutral proof rendered"
+        order = "Order DM-2026-0509-UI — confirmed\nTotal: ₩100\nDelivery: 오늘 19:00–21:00"
+        auditTrail = "grocery.purchase_essentials.executed\nrequest_id=ios-grocery-confirmed-ui\nmesh_receipt_signed=true\nchain_status=confirmed\ntx_hash=0xokrwDailyMartConfirmedUIReceipt"
+        receiptChainProofTitle = "Confirmed provider-neutral chain proof"
+        receiptChainProofAccessibilityPrefix = "Confirmed chain proof"
+        receiptChainProofFields = DailyMartReceiptProofField.confirmedFields(from: result)
+    }
+
+    private func showPendingReceiptUIProof() {
+        let requestHash = String(repeating: "b", count: 64)
+        let policyHash = DailyMartDelegatedSpendingPolicy.policyHash.value
+        let result = [
+            "chainProvider": "maroo",
+            "chainId": "maroo-testnet-1",
+            "chainNetwork": "maroo-testnet",
+            "chainProofType": "payment_execution",
+            "chainStatus": "pending",
+            "presentationState": "submitted_not_final",
+            "requestHash": requestHash,
+            "requestNonce": "ios-grocery-pending-ui-nonce",
+            "policyId": DailyMartDelegatedSpendingPolicy.policyId,
+            "policyHash": policyHash,
+            "walletAddress": "maroo1dailyMartAgentWallet",
+            "amount": "100",
+            "asset": DailyMartDelegatedSpendingPolicy.asset,
+            "recipient": DailyMartDelegatedSpendingPolicy.recipientAddress,
+            "anchoringReference": "request-anchor-sha256-\(requestHash)",
+            "executionAttemptId": "meshkit-execution-attempt/v1:pay-pending-ui:auth-pending-ui:exec-pending-ui",
+            "paymentId": "pay-pending-ui",
+            "authorizationId": "auth-pending-ui",
+            "executionId": "exec-pending-ui",
+            "executionKind": "payment",
+            "anchorTxHash": "0xanchorDailyMartPendingUIReceipt",
+            "submittedAt": "2026-05-31T12:05:00Z",
+            "externalChainExitCondition": "BlockedByExternalChain",
+            "externalChainBlockerType": "payment_confirmation_unavailable",
+            "externalChainOperation": "executeOKRWTransfer",
+            "externalChainEndpoint": "https://rpc-testnet.maroo.io",
+            "externalChainMessage": "maroo live OKRW confirmation is unavailable for this demo run"
+        ]
+        request = nil
+        isProcessing = false
+        didCompleteOrder = false
+        orderId = "DM-2026-0509-PENDING"
+        orderSource = "pending receipt UI test"
+        incoming = "Target-owned pending receipt accepted · request anchored · awaiting OKRW confirmation"
+        order = "OKRW execution submitted. No order is marked paid until maroo returns a live confirmed txHash."
+        auditTrail = "grocery.purchase_essentials.submitted\nrequest_id=ios-grocery-pending-ui\nmesh_receipt_signed=true\nchain_status=pending\npresentation_state=submitted_not_final\nproof_type=payment_execution\nanchoring_reference=request-anchor-sha256-\(requestHash)\nexecution_attempt_id=meshkit-execution-attempt/v1:pay-pending-ui:auth-pending-ui:exec-pending-ui\nexternal_chain_exit_condition=BlockedByExternalChain\nno_tx_hash=true"
+        receiptChainProofTitle = "Pending provider-neutral chain proof"
+        receiptChainProofAccessibilityPrefix = "Pending chain proof"
+        receiptChainProofFields = DailyMartReceiptProofField.pendingFields(from: result)
+    }
+
+    private func showFailedReceiptUIProof() {
+        let requestHash = String(repeating: "c", count: 64)
+        let policyHash = DailyMartDelegatedSpendingPolicy.policyHash.value
+        let result = [
+            "chainProvider": "maroo",
+            "chainId": "maroo-testnet-1",
+            "chainNetwork": "maroo-testnet",
+            "chainProofType": "payment_execution",
+            "chainStatus": "failed",
+            "presentationState": "attempted_failed",
+            "requestHash": requestHash,
+            "requestNonce": "ios-grocery-failed-ui-nonce",
+            "policyId": DailyMartDelegatedSpendingPolicy.policyId,
+            "policyHash": policyHash,
+            "walletAddress": "maroo1dailyMartAgentWallet",
+            "amount": "100",
+            "asset": DailyMartDelegatedSpendingPolicy.asset,
+            "recipient": DailyMartDelegatedSpendingPolicy.recipientAddress,
+            "anchoringReference": "request-anchor-sha256-\(requestHash)",
+            "executionAttemptId": "meshkit-execution-attempt/v1:pay-failed-ui:auth-failed-ui:exec-failed-ui",
+            "paymentId": "pay-failed-ui",
+            "authorizationId": "auth-failed-ui",
+            "executionId": "exec-failed-ui",
+            "executionKind": "payment",
+            "anchorTxHash": "0xanchorDailyMartFailedUIReceipt",
+            "errorCode": "payment_confirmation_unavailable",
+            "errorMessage": "maroo RPC did not return a transaction receipt",
+            "externalChainExitCondition": "BlockedByExternalChain",
+            "externalChainBlockerType": "payment_confirmation_unavailable",
+            "externalChainOperation": "executeOKRWTransfer",
+            "externalChainEndpoint": "https://rpc-testnet.maroo.io",
+            "externalChainMessage": "maroo RPC did not return a transaction receipt"
+        ]
+        request = nil
+        isProcessing = false
+        didCompleteOrder = false
+        orderId = "DM-2026-0509-FAILED"
+        orderSource = "failed receipt UI test"
+        incoming = "Target-owned failed receipt accepted · OKRW execution attempted · no paid order state"
+        order = "OKRW execution attempted but not paid. DailyMart does not mark the order complete without a confirmed txHash."
+        auditTrail = "grocery.purchase_essentials.failed\nrequest_id=ios-grocery-failed-ui\nmesh_receipt_signed=true\nchain_status=failed\npresentation_state=attempted_failed\nanchoring_reference=request-anchor-sha256-\(requestHash)\nerrorCode=payment_confirmation_unavailable\nerrorMessage=maroo RPC did not return a transaction receipt\nno_tx_hash=true"
+        receiptChainProofTitle = "Failed provider-neutral chain proof"
+        receiptChainProofAccessibilityPrefix = "Failed chain proof"
+        receiptChainProofFields = DailyMartReceiptProofField.failedFields(from: result)
+    }
+
+    private func showPolicyDeniedReceiptUIProof() {
+        let requestHash = String(repeating: "d", count: 64)
+        let policyHash = DailyMartDelegatedSpendingPolicy.policyHash.value
+        let result = [
+            "chainProvider": "maroo",
+            "chainId": "maroo-testnet-1",
+            "chainNetwork": "maroo-testnet",
+            "chainProofType": "policy_denial",
+            "chainStatus": "failed",
+            "presentationState": "policy_denied",
+            "requestHash": requestHash,
+            "requestNonce": "ios-grocery-policy-denied-ui-nonce",
+            "policyId": DailyMartDelegatedSpendingPolicy.policyId,
+            "policyHash": policyHash,
+            "walletAddress": "maroo1dailyMartAgentWallet",
+            "amount": "250",
+            "asset": DailyMartDelegatedSpendingPolicy.asset,
+            "recipient": DailyMartDelegatedSpendingPolicy.recipientAddress,
+            "anchoringReference": "request-anchor-sha256-\(requestHash)",
+            "executionAttemptId": "meshkit-execution-attempt/v1:policy-denied-ui:wallet-policy:exec-policy-denied-ui",
+            "executionId": "exec-policy-denied-ui",
+            "errorCode": "wallet_policy_denied",
+            "errorMessage": "policy-single-payment-max-exceeded"
+        ]
+        request = nil
+        isProcessing = false
+        didCompleteOrder = false
+        orderId = "DM-2026-0509-POLICY-DENIED"
+        orderSource = "policy-denied receipt UI test"
+        incoming = "Target-owned policy-denied receipt accepted · delegated wallet policy blocked execution"
+        order = "DailyMart policy denied this delegated spend. No OKRW execution started and no order is marked paid."
+        auditTrail = "grocery.purchase_essentials.policy_denied\nrequest_id=ios-grocery-policy-denied-ui\nmesh_receipt_signed=true\nchain_status=failed\npresentation_state=policy_denied\nproof_type=policy_denial\nanchoring_reference=request-anchor-sha256-\(requestHash)\nexecution_started=false\nerrorCode=wallet_policy_denied\nerrorMessage=policy-single-payment-max-exceeded\nno_tx_hash=true"
+        receiptChainProofTitle = "Policy-denied provider-neutral chain proof"
+        receiptChainProofAccessibilityPrefix = "Policy-denied chain proof"
+        receiptChainProofFields = DailyMartReceiptProofField.policyDeniedFields(from: result)
     }
 
     private func demoMeshRequest(requestId: String) -> MeshRequest {
@@ -106,7 +342,14 @@ struct DailyMartApp: App {
             payload: [
                 "items": "laundry_detergent:1,toilet_paper:2,bottled_water_2l:6",
                 "address_ref": "home.saved",
-                "budget_krw": "100"
+                "budget_krw": "100",
+                "merchantScope": DailyMartDelegatedSpendingPolicy.merchantScope,
+                "capabilityScope": DailyMartDelegatedSpendingPolicy.capabilityScope,
+                "consentGrantId": DailyMartDelegatedSpendingPolicy.consentGrantId,
+                "walletSessionId": DailyMartDelegatedSpendingPolicy.walletSessionId,
+                "principalId": DailyMartDelegatedSpendingPolicy.principalId,
+                "policyId": DailyMartDelegatedSpendingPolicy.policyId,
+                "policyHash": DailyMartDelegatedSpendingPolicy.policyHash.value
             ],
             nonce: requestId + "-nonce",
             timestamp: ISO8601DateFormatter().string(from: Date()),
@@ -129,15 +372,9 @@ struct DailyMartApp: App {
         }
         do {
             let decoded = try MeshRequest.decodedFromURLScheme(encoded)
-            try MeshTarget.validate(
-                decoded,
-                policy: MeshTargetPolicy(
-                    allowedCallerAppId: "app.hermes-chat",
-                    targetBundleId: "ai.meshkit.sample.dailymart",
-                    capabilityId: "grocery.purchase_essentials"
-                )
-            )
-            try MeshTarget.verifyPayloadHash(decoded)
+            let accepted = try HermesRequestSigningTrust
+                .dailyMartPreExecutionGuard(freshnessStore: preExecutionFreshnessStore)
+                .acceptForWalletExecution(decoded)
             request = decoded
             orderId = "DM-2026-0509-001"
             orderSource = "foreground consent grant"
@@ -145,7 +382,7 @@ struct DailyMartApp: App {
             isProcessing = false
             order = "No order yet."
             auditTrail = "Consent and execution history will appear here."
-            incoming = "Signed request decoded · needs one-time consent · budget ≤ ₩100"
+            incoming = "Pre-execution guard passed · nonce \(accepted.nonce) · OKRW ₩\(accepted.executionRequest.amount) · available ₩\(accepted.availableLimitBeforeExecution)"
         } catch {
             request = nil
             incoming = "Rejected MeshKit request: \(error)"
@@ -158,17 +395,32 @@ struct DailyMartApp: App {
             return
         }
         if ProcessInfo.processInfo.arguments.contains("--demo-received-request") {
-            isProcessing = true
-            order = "Consent granted. Hermes may place this order once in the background."
-            orderId = "DM-2026-0509-001"
-            orderSource = "foreground consent grant"
-            didCompleteOrder = false
-            auditTrail = "consent.granted → intent.pending\nrequest_id=\(request.requestId)\nscope=purchase,address,wallet_budget · max_budget=100 · one_time=true\norder_placed=false"
+            do {
+                let gate = try requireWalletPolicyApproval(for: request)
+                isProcessing = true
+                order = "Consent granted. Hermes may place this order once in the background."
+                orderId = "DM-2026-0509-001"
+                orderSource = "foreground consent grant"
+                didCompleteOrder = false
+                auditTrail = "wallet_policy_gate=\(gate.policyEvaluation.status.rawValue)\nscope_consent_gate=\(gate.scopeConsent.status.rawValue)\nrequest_id=\(request.requestId)\nmerchant_scope=\(gate.scopeConsent.merchantScope)\ncapability_scope=\(gate.scopeConsent.capabilityScope)\nconsent_grant_id=\(gate.scopeConsent.consentGrantId)\navailable_limit_okrw=\(gate.availableLimitBeforeExecution)\norder_placed=false"
+            } catch {
+                isProcessing = false
+                didCompleteOrder = false
+                order = "Policy denied before purchase: \(error)"
+                auditTrail = policyDeniedAuditTrail(for: request, error: error)
+            }
             return
         }
         isProcessing = true
         order = "Consent granted. Hermes may place this order once in the background."
         auditTrail = "consent.granted → intent.pending\nscope=purchase,address,wallet_budget · max_budget=100 · one_time=true"
+        Task { @MainActor in
+            await executeApprovedOKRWPurchase(request)
+        }
+    }
+
+    @MainActor
+    private func executeApprovedOKRWPurchase(_ request: MeshRequest) async {
         do {
             let audit = try MeshTarget.validatePublicMesh(
                 request: request,
@@ -195,38 +447,276 @@ struct DailyMartApp: App {
                 observedCallerBundleId: "ai.meshkit.sample.hermeschat",
                 replayCache: replayCache
             )
+            let gate = try requireWalletPolicyApproval(for: request)
+            let orchestrationResult = try await dailyMartOKRWOrchestrator().execute(
+                request: request,
+                executionKind: .payment,
+                anchorSubmittedAt: ISO8601DateFormatter().string(from: Date()),
+                authorizationDecidedAt: ISO8601DateFormatter().string(from: Date()),
+                paymentRequestedAt: ISO8601DateFormatter().string(from: Date()),
+                paymentSubmittedAt: ISO8601DateFormatter().string(from: Date())
+            )
+            if orchestrationResult.presentationState == .policyDenied ||
+                orchestrationResult.presentationState == .validationDenied {
+                let reason = orchestrationResult.denialReason ?? "pre-execution-denied"
+                let receipt = try signedPolicyDeniedReceipt(for: request, reason: reason)
+                let encodedReceipt = try receipt.encodedForURLScheme()
+                isProcessing = false
+                didCompleteOrder = false
+                order = "DailyMart policy denied this delegated spend. No OKRW execution started and no order is marked paid."
+                auditTrail = "wallet_policy_gate=denied\nrequest_id=\(request.requestId)\nexecution_started=false\nmesh_receipt_signed=true\nstatus=failed\nproof_type=\(receipt.result["chainProofType"] ?? "")\npresentation_state=\(receipt.result["presentationState"] ?? "")\nerrorCode=\(receipt.result["errorCode"] ?? "")\nerrorMessage=\(receipt.result["errorMessage"] ?? "")"
+                openHermesCallback(status: "failed", requestId: request.requestId, encodedReceipt: encodedReceipt)
+                return
+            }
+            let receipt = try signedReceipt(
+                for: request,
+                orchestrationResult: orchestrationResult,
+                orderId: "DM-2026-0509-001"
+            )
+            let encodedReceipt = try receipt.encodedForURLScheme()
+            let callbackStatus = receipt.result["chainStatus"] == "confirmed" ? "purchased" : "submitted"
             orderId = "DM-2026-0509-001"
             orderSource = "foreground consent grant"
-            didCompleteOrder = false
+            didCompleteOrder = receipt.result["chainStatus"] == "confirmed"
             isProcessing = true
-            order = "Consent granted. Hermes may place this order once in the background."
-            auditTrail = "consent.granted → intent.pending\nrequest_id=\(audit.requestId)\nscope=purchase,address,wallet_budget · max_budget=100 · one_time=true\norder_placed=false"
-            let callback = "meshkit-hermes://callback?status=processing&capability=grocery.purchase_essentials&audit_id=\(urlEscape(audit.requestId))&receipt_token=\(urlEscape(request.requestId))&receipt_sig=demo-signed-consent"
-            UIApplication.shared.open(URL(string: callback)!)
+            if didCompleteOrder {
+                incoming = "Target-owned signed OKRW receipt emitted · foreground consent grant"
+                order = "Order DM-2026-0509-001 — 주문 완료\n• 세탁세제 × 1\n• 화장지 × 2\n• 생수 2L × 6\nTotal: ₩100\nDelivery: 오늘 19:00–21:00"
+                receiptChainProofTitle = "Confirmed provider-neutral chain proof"
+                receiptChainProofAccessibilityPrefix = "Confirmed chain proof"
+                receiptChainProofFields = DailyMartReceiptProofField.confirmedFields(from: receipt.result)
+            } else {
+                incoming = "Target-owned signed OKRW receipt emitted · awaiting maroo confirmation"
+                order = "OKRW execution submitted. No order is marked paid until maroo returns a live confirmed txHash."
+                receiptChainProofTitle = "Pending provider-neutral chain proof"
+                receiptChainProofAccessibilityPrefix = "Pending chain proof"
+                receiptChainProofFields = DailyMartReceiptProofField.pendingFields(from: receipt.result)
+            }
+            auditTrail = "wallet_policy_gate=\(gate.policyEvaluation.status.rawValue)\nscope_consent_gate=\(gate.scopeConsent.status.rawValue)\nrequest_id=\(audit.requestId)\nmerchant_scope=\(gate.scopeConsent.merchantScope)\ncapability_scope=\(gate.scopeConsent.capabilityScope)\nconsent_grant_id=\(gate.scopeConsent.consentGrantId)\navailable_limit_okrw=\(gate.availableLimitBeforeExecution)\nmesh_receipt_signed=true\nchain_status=\(receipt.result["chainStatus"] ?? "pending")\npresentation_state=\(receipt.result["presentationState"] ?? "submitted_not_final")\nasset=\(receipt.result["asset"] ?? DailyMartDelegatedSpendingPolicy.asset)"
+            openHermesCallback(status: callbackStatus, requestId: request.requestId, encodedReceipt: encodedReceipt)
         } catch {
             isProcessing = false
-            order = "Rejected before purchase: \(error)"
+            didCompleteOrder = false
+            order = "Policy denied before purchase: \(error)"
+            auditTrail = policyDeniedAuditTrail(for: request, error: error)
         }
     }
 
+    private func policyDeniedAuditTrail(for request: MeshRequest, error: Error) -> String {
+        let reason = "\(error)"
+        do {
+            let receipt = try signedPolicyDeniedReceipt(for: request, reason: reason)
+            let encoded = try receipt.encodedForURLScheme()
+            openHermesCallback(status: "failed", requestId: request.requestId, encodedReceipt: encoded)
+            return "wallet_policy_gate=denied\nrequest_id=\(request.requestId)\nexecution_started=false\nmesh_receipt_signed=true\nstatus=failed\nproof_type=\(receipt.result["chainProofType"] ?? "")\npresentation_state=\(receipt.result["presentationState"] ?? "")\nerrorCode=\(receipt.result["errorCode"] ?? "")\nerrorMessage=\(receipt.result["errorMessage"] ?? "")\nerror=\(reason)"
+        } catch {
+            return "wallet_policy_gate=denied\nrequest_id=\(request.requestId)\nexecution_started=false\nmesh_receipt_signed=false\nerror=\(reason)\nreceipt_error=\(error)"
+        }
+    }
+
+    private func dailyMartOKRWOrchestrator() throws -> DailyMartGuardOrchestrator {
+        try DailyMartGuardOrchestrator(
+            signedRequestGuard: HermesRequestSigningTrust.dailyMartPreExecutionGuard(
+                freshnessStore: DailyMartRequestNonceFreshnessStore()
+            ),
+            walletPolicyGuard: try DailyMartPreExecutionWalletPolicyGuard(),
+            requestAnchorProvider: try MeshMarooTestnetRequestAnchorAdapter(status: .submitted),
+            paymentExecutor: try MeshMarooTestnetPaymentExecutorAdapter()
+        )
+    }
+
     private func signedReceipt(for request: MeshRequest, orderId: String) throws -> MeshReceipt {
-        try MeshReceiptSigner.ed25519(
-            keyId: DailyMartReceiptSigningKey.keyId,
-            privateKey: DailyMartReceiptSigningKey.privateKey()
-        ).makeReceipt(
-            receiptId: orderId + "-receipt",
+        let policyVerification = try verifyDelegatedSpendingPolicy(for: request)
+        let chainProof = try dailyMartChainProof(for: request, orderId: orderId, policyVerification: policyVerification)
+        let baseResult = [
+            "order_id": orderId,
+            "total_krw": "100",
+            "payment_asset": DailyMartDelegatedSpendingPolicy.asset,
+            "policy_verification": policyVerification.status.rawValue
+        ]
+        return try DailyMartTargetReceiptFactory(
+            signer: MeshReceiptSigner.ed25519(
+                keyId: DailyMartReceiptSigningKey.keyId,
+                privateKey: DailyMartReceiptSigningKey.privateKey()
+            )
+        ).makeAcceptedCallReceipt(
             request: request,
-            targetAppId: "app.dailymart",
-            targetBundleId: "ai.meshkit.sample.dailymart",
-            status: "purchased",
-            result: ["order_id": orderId, "total_krw": "100"],
-            nonce: orderId + "-receipt-nonce",
+            status: chainProof.status == .confirmed ? "purchased" : "submitted",
+            baseResult: baseResult,
+            chainProof: chainProof,
             timestamp: ISO8601DateFormatter().string(from: Date())
+        )
+    }
+
+    private func signedReceipt(
+        for request: MeshRequest,
+        orchestrationResult: DailyMartGuardOrchestrationResult,
+        orderId: String
+    ) throws -> MeshReceipt {
+        try DailyMartTargetReceiptFactory(
+            signer: MeshReceiptSigner.ed25519(
+                keyId: DailyMartReceiptSigningKey.keyId,
+                privateKey: DailyMartReceiptSigningKey.privateKey()
+            )
+        ).makeVerifiedWalletExecutionReceipt(
+            request: request,
+            orchestrationResult: orchestrationResult,
+            walletAddress: "maroo1dailyMartAgentWallet",
+            baseResult: [
+                "order_id": orderId,
+                "total_krw": "100",
+                "payment_asset": DailyMartDelegatedSpendingPolicy.asset,
+                "policy_verification": MeshDelegatedSpendingPolicyVerificationStatus.approved.rawValue
+            ],
+            timestamp: ISO8601DateFormatter().string(from: Date())
+        )
+    }
+
+    private func signedPolicyDeniedReceipt(for request: MeshRequest, reason: String) throws -> MeshReceipt {
+        let policyGuard = try DailyMartPreExecutionWalletPolicyGuard()
+        let executionRequest = try policyGuard.makeExecutionRequest(
+            from: request,
+            executionKind: .payment,
+            executionId: "exec-\(request.requestId)"
+        )
+        let providerIdentity = try MeshMarooTestnetChainProvider().identity
+        let anchoringReference = try MeshRequestAnchorCanonicalization.anchoringReference(
+            for: request,
+            providerIdentity: providerIdentity
+        )
+        return try DailyMartTargetReceiptFactory(
+            signer: MeshReceiptSigner.ed25519(
+                keyId: DailyMartReceiptSigningKey.keyId,
+                privateKey: DailyMartReceiptSigningKey.privateKey()
+            )
+        ).makePolicyDeniedWalletExecutionReceipt(
+            request: request,
+            executionRequest: executionRequest,
+            providerIdentity: providerIdentity,
+            walletAddress: "maroo1dailyMartAgentWallet",
+            anchoringReference: anchoringReference.anchorId,
+            denialReason: reason,
+            baseResult: [
+                "order_id": orderId,
+                "total_krw": request.payload["budget_krw"] ?? "100",
+                "payment_asset": DailyMartDelegatedSpendingPolicy.asset,
+                "errorCode": "wallet_policy_denied",
+                "errorMessage": reason
+            ],
+            timestamp: ISO8601DateFormatter().string(from: Date())
+        )
+    }
+
+    private func dailyMartChainProof(
+        for request: MeshRequest,
+        orderId: String,
+        policyVerification: MeshDelegatedSpendingPolicyVerificationResult
+    ) throws -> MeshChainProof {
+        let observedAt = ISO8601DateFormatter().string(from: Date())
+        let anchoringReference = try dailyMartAnchoringReference(for: request)
+        guard let liveTxHash = ProcessInfo.processInfo.environment["MESHKIT_IOS_MAROO_LIVE_TX_HASH"],
+              !liveTxHash.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            let blockerEvidence = try MeshExternalChainBlockerEvidence(
+                blockerType: .paymentConfirmationUnavailable,
+                identity: MeshMarooTestnetChainProvider().identity,
+                endpoint: URL(string: "https://rpc-testnet.maroo.io"),
+                operation: "executeOKRWTransfer",
+                observedAt: observedAt,
+                message: "maroo live OKRW confirmation is unavailable for this demo run",
+                requestHash: MeshRequestAnchorCanonicalization.signedRequestHash(for: request),
+                requestNonce: request.nonce,
+                anchoringReference: anchoringReference.anchorId
+            )
+            return try MeshChainProof(
+                provider: "maroo",
+                chainId: "maroo-testnet-1",
+                network: "maroo-testnet",
+                proofType: .requestAnchor,
+                status: .pending,
+                presentationState: .submittedNotFinal,
+                requestHash: MeshRequestAnchorCanonicalization.signedRequestHash(for: request),
+                requestNonce: request.nonce,
+                policyId: policyVerification.policyId,
+                policyHash: policyVerification.policyHash,
+                walletAddress: "maroo1dailyMartAgentWallet",
+                amount: Decimal(100),
+                asset: DailyMartDelegatedSpendingPolicy.asset,
+                recipient: DailyMartDelegatedSpendingPolicy.recipientAddress,
+                anchoringReference: anchoringReference.anchorId,
+                submittedAt: observedAt,
+                providerExtensions: ["maroo": blockerEvidence.providerExtensionFields]
+            )
+        }
+        let anchorTxHash = ProcessInfo.processInfo.environment["MESHKIT_IOS_MAROO_ANCHOR_TX_HASH"]
+        return try MeshChainProof(
+            provider: "maroo",
+            chainId: "maroo-testnet-1",
+            network: "maroo-testnet",
+            proofType: .paymentExecution,
+            status: .confirmed,
+            presentationState: .paidComplete,
+            requestHash: MeshRequestAnchorCanonicalization.signedRequestHash(for: request),
+            requestNonce: request.nonce,
+            policyId: policyVerification.policyId,
+            policyHash: policyVerification.policyHash,
+            walletAddress: "maroo1dailyMartAgentWallet",
+            amount: Decimal(100),
+            asset: DailyMartDelegatedSpendingPolicy.asset,
+            recipient: DailyMartDelegatedSpendingPolicy.recipientAddress,
+            anchoringReference: anchoringReference.anchorId,
+            anchorTxHash: anchorTxHash,
+            txHash: liveTxHash,
+            explorerUrl: URL(string: "https://explorer-testnet.maroo.io/tx/\(liveTxHash)"),
+            submittedAt: observedAt,
+            confirmedAt: observedAt
+        )
+    }
+
+    private func dailyMartAnchoringReference(for request: MeshRequest) throws -> MeshRequestAnchorIdentifier {
+        try MeshRequestAnchorCanonicalization.anchoringReference(
+            for: request,
+            providerIdentity: MeshMarooTestnetChainProvider().identity
+        )
+    }
+
+    private func verifyDelegatedSpendingPolicy(for request: MeshRequest) throws -> MeshDelegatedSpendingPolicyVerificationResult {
+        let result = try DailyMartDelegatedSpendingPolicy.verifyRequest(
+            request,
+            verifiedAt: ISO8601DateFormatter().string(from: Date())
+        )
+        guard result.status == .approved else {
+            throw MeshKitValidationError.invalidAgentWalletIdentity(result.reason ?? "policy-verification")
+        }
+        return result
+    }
+
+    private func requireWalletPolicyApproval(for request: MeshRequest) throws -> DailyMartPreExecutionWalletPolicyGuardResult {
+        try DailyMartPreExecutionWalletPolicyGuard().evaluate(
+            request,
+            executionKind: .payment,
+            executionId: "exec-\(request.requestId)",
+            verifiedAt: ISO8601DateFormatter().string(from: Date())
         )
     }
 
     private func urlEscape(_ value: String) -> String {
         value.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? value
+    }
+
+    private func openHermesCallback(status: String, requestId: String, encodedReceipt: String) {
+        var components = URLComponents()
+        components.scheme = "meshkit-hermes"
+        components.host = "callback"
+        components.queryItems = [
+            URLQueryItem(name: "status", value: status),
+            URLQueryItem(name: "receipt_token", value: requestId),
+            URLQueryItem(name: "mesh_receipt", value: encodedReceipt)
+        ]
+        guard let callback = components.url else {
+            auditTrail = "\(auditTrail)\ncallback_url_error=badURL"
+            return
+        }
+        UIApplication.shared.open(callback)
     }
 
     private func showSavedConsentOrderProof(_ url: URL) {
@@ -241,6 +731,9 @@ private struct DailyMartRootView: View {
     let orderId: String
     let orderSource: String
     let auditTrail: String
+    let receiptChainProofTitle: String
+    let receiptChainProofAccessibilityPrefix: String
+    let receiptChainProofFields: [DailyMartReceiptProofField]
     let hasRequest: Bool
     let isProcessing: Bool
     let didCompleteOrder: Bool
@@ -259,14 +752,17 @@ private struct DailyMartRootView: View {
                     hero
                     if didCompleteOrder {
                         orderConfirmationCard
+                        receiptProofCard
                         basketCard
                         auditCard
                     } else if isProcessing {
                         approvalProcessingCard
+                        receiptProofCard
                         basketCard
                         auditCard
                     } else {
                         requestCard
+                        receiptProofCard
                         basketCard
                         deliveryCard
                         auditCard
@@ -504,6 +1000,42 @@ private struct DailyMartRootView: View {
         }
     }
 
+    @ViewBuilder
+    private var receiptProofCard: some View {
+        if !receiptChainProofFields.isEmpty {
+            AppCard {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(spacing: 10) {
+                        IconBadge(systemName: "link.badge.plus", color: Color(red: 0.13, green: 0.32, blue: 0.78))
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(receiptChainProofTitle)
+                                .font(.system(size: 18, weight: .black, design: .rounded))
+                                .foregroundColor(.primary)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.78)
+                            Text("Target-owned DailyMart MeshReceipt")
+                                .font(.system(size: 12.5, weight: .semibold))
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    VStack(spacing: 8) {
+                        ForEach(receiptChainProofFields) { field in
+                            ProofRow(label: field.label, value: field.value)
+                                .accessibilityLabel("\(receiptChainProofAccessibilityPrefix) \(field.schemaName): \(field.value)")
+                                .accessibilityIdentifier("chain-proof-field-\(field.schemaName)")
+                        }
+                    }
+                    .padding(12)
+                    .background(Color(red: 0.13, green: 0.32, blue: 0.78).opacity(0.07))
+                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                }
+                .accessibilityElement(children: .contain)
+                .accessibilityLabel("\(receiptChainProofTitle) fields")
+                .accessibilityIdentifier("\(receiptChainProofAccessibilityPrefix.lowercased().replacingOccurrences(of: " ", with: "-"))-debug-ui")
+            }
+        }
+    }
+
     private var deliveryCard: some View {
         AppCard {
             HStack(spacing: 13) {
@@ -593,6 +1125,131 @@ private struct DailyMartRootView: View {
     }
 }
 
+private struct DailyMartReceiptProofField: Identifiable, Equatable {
+    let schemaName: String
+    let label: String
+    let value: String
+
+    var id: String { schemaName }
+
+    static func confirmedFields(from result: [String: String]) -> [DailyMartReceiptProofField] {
+        [
+            field("provider", "Provider", result["chainProvider"]),
+            field("chainId", "Chain ID", result["chainId"]),
+            field("network", "Network", result["chainNetwork"]),
+            field("proofType", "Proof type", result["chainProofType"]),
+            field("status", "Status", result["chainStatus"]),
+            field("presentationState", "Presentation", result["presentationState"]),
+            field("requestHash", "Request hash", result["requestHash"]),
+            field("requestNonce", "Request nonce", result["requestNonce"]),
+            field("policyId", "Policy ID", result["policyId"]),
+            field("policyHash", "Policy hash", result["policyHash"]),
+            field("walletAddress", "Wallet", result["walletAddress"]),
+            field("amount", "Amount", result["amount"]),
+            field("asset", "Asset", result["asset"]),
+            field("recipient", "Recipient", result["recipient"]),
+            field("anchoringReference", "Anchor", result["anchoringReference"]),
+            field("txHash", "Tx hash", result["txHash"]),
+            field("explorerUrl", "Explorer", result["explorerUrl"]),
+            field("confirmedAt", "Confirmed at", result["confirmedAt"]),
+            field("providerExtensions", "Provider extensions", result["providerExtensions"] ?? "none")
+        ]
+    }
+
+    static func pendingFields(from result: [String: String]) -> [DailyMartReceiptProofField] {
+        [
+            field("provider", "Provider", result["chainProvider"]),
+            field("chainId", "Chain ID", result["chainId"]),
+            field("network", "Network", result["chainNetwork"]),
+            field("proofType", "Proof type", result["chainProofType"]),
+            field("status", "Status", result["chainStatus"]),
+            field("presentationState", "Presentation", result["presentationState"]),
+            field("requestHash", "Request hash", result["requestHash"]),
+            field("requestNonce", "Request nonce", result["requestNonce"]),
+            field("policyId", "Policy ID", result["policyId"]),
+            field("policyHash", "Policy hash", result["policyHash"]),
+            field("walletAddress", "Wallet", result["walletAddress"]),
+            field("amount", "Amount", result["amount"]),
+            field("asset", "Asset", result["asset"]),
+            field("recipient", "Recipient", result["recipient"]),
+            field("anchoringReference", "Anchor", result["anchoringReference"]),
+            field("executionAttemptId", "Execution attempt", result["executionAttemptId"]),
+            field("paymentId", "Payment ID", result["paymentId"]),
+            field("authorizationId", "Authorization ID", result["authorizationId"]),
+            field("executionId", "Execution ID", result["executionId"]),
+            field("executionKind", "Execution kind", result["executionKind"]),
+            field("anchorTxHash", "Anchor tx hash", result["anchorTxHash"]),
+            field("submittedAt", "Submitted at", result["submittedAt"]),
+            field("externalChainExitCondition", "External chain", result["externalChainExitCondition"]),
+            field("externalChainBlockerType", "Blocker type", result["externalChainBlockerType"]),
+            field("externalChainOperation", "Operation", result["externalChainOperation"]),
+            field("externalChainEndpoint", "Endpoint", result["externalChainEndpoint"]),
+            field("externalChainMessage", "Message", result["externalChainMessage"])
+        ]
+    }
+
+    static func failedFields(from result: [String: String]) -> [DailyMartReceiptProofField] {
+        [
+            field("provider", "Provider", result["chainProvider"]),
+            field("chainId", "Chain ID", result["chainId"]),
+            field("network", "Network", result["chainNetwork"]),
+            field("proofType", "Proof type", result["chainProofType"]),
+            field("status", "Status", result["chainStatus"]),
+            field("presentationState", "Presentation", result["presentationState"]),
+            field("requestHash", "Request hash", result["requestHash"]),
+            field("requestNonce", "Request nonce", result["requestNonce"]),
+            field("policyId", "Policy ID", result["policyId"]),
+            field("policyHash", "Policy hash", result["policyHash"]),
+            field("walletAddress", "Wallet", result["walletAddress"]),
+            field("amount", "Amount", result["amount"]),
+            field("asset", "Asset", result["asset"]),
+            field("recipient", "Recipient", result["recipient"]),
+            field("anchoringReference", "Anchor", result["anchoringReference"]),
+            field("executionAttemptId", "Execution attempt", result["executionAttemptId"]),
+            field("paymentId", "Payment ID", result["paymentId"]),
+            field("authorizationId", "Authorization ID", result["authorizationId"]),
+            field("executionId", "Execution ID", result["executionId"]),
+            field("executionKind", "Execution kind", result["executionKind"]),
+            field("anchorTxHash", "Anchor tx hash", result["anchorTxHash"]),
+            field("errorCode", "Error code", result["errorCode"]),
+            field("errorMessage", "Error message", result["errorMessage"]),
+            field("externalChainExitCondition", "External chain", result["externalChainExitCondition"]),
+            field("externalChainBlockerType", "Blocker type", result["externalChainBlockerType"]),
+            field("externalChainOperation", "Operation", result["externalChainOperation"]),
+            field("externalChainEndpoint", "Endpoint", result["externalChainEndpoint"]),
+            field("externalChainMessage", "Message", result["externalChainMessage"])
+        ]
+    }
+
+    static func policyDeniedFields(from result: [String: String]) -> [DailyMartReceiptProofField] {
+        [
+            field("provider", "Provider", result["chainProvider"]),
+            field("chainId", "Chain ID", result["chainId"]),
+            field("network", "Network", result["chainNetwork"]),
+            field("proofType", "Proof type", result["chainProofType"]),
+            field("status", "Status", result["chainStatus"]),
+            field("presentationState", "Presentation", result["presentationState"]),
+            field("requestHash", "Request hash", result["requestHash"]),
+            field("requestNonce", "Request nonce", result["requestNonce"]),
+            field("policyId", "Policy ID", result["policyId"]),
+            field("policyHash", "Policy hash", result["policyHash"]),
+            field("walletAddress", "Wallet", result["walletAddress"]),
+            field("amount", "Amount", result["amount"]),
+            field("asset", "Asset", result["asset"]),
+            field("recipient", "Recipient", result["recipient"]),
+            field("anchoringReference", "Anchor", result["anchoringReference"]),
+            field("executionAttemptId", "Execution attempt", result["executionAttemptId"]),
+            field("executionId", "Execution ID", result["executionId"]),
+            field("errorCode", "Error code", result["errorCode"]),
+            field("errorMessage", "Error message", result["errorMessage"])
+        ]
+    }
+
+    private static func field(_ schemaName: String, _ label: String, _ value: String?) -> DailyMartReceiptProofField {
+        DailyMartReceiptProofField(schemaName: schemaName, label: label, value: value ?? "missing")
+    }
+}
+
 private struct ProofRow: View {
     let label: String
     let value: String
@@ -606,6 +1263,9 @@ private struct ProofRow: View {
             Text(value)
                 .font(.system(size: 14, weight: .black, design: .rounded))
                 .foregroundColor(.primary)
+                .multilineTextAlignment(.trailing)
+                .lineLimit(3)
+                .minimumScaleFactor(0.72)
         }
     }
 }

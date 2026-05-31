@@ -97,8 +97,13 @@ public struct MeshRequestSigner: Sendable {
         }
     }
 
+    public func signature(for data: Data) throws -> MeshSignature {
+        let signature = try signData(data).base64EncodedString()
+        return MeshSignature(algorithm: algorithm, keyId: keyId, value: signature)
+    }
+
     public func sign(_ request: MeshRequest) throws -> MeshRequest {
-        let signature = try signData(request.signingInputData()).base64EncodedString()
+        let signature = try signature(for: request.signingInputData())
         return MeshRequest(
             requestId: request.requestId,
             caller: request.caller,
@@ -107,7 +112,7 @@ public struct MeshRequestSigner: Sendable {
             payloadHash: request.payloadHash,
             nonce: request.nonce,
             timestamp: request.timestamp,
-            signature: MeshSignature(algorithm: algorithm, keyId: keyId, value: signature)
+            signature: signature
         )
     }
 }
