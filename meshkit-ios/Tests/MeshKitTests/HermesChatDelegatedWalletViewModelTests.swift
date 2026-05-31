@@ -9,6 +9,7 @@ final class HermesChatDelegatedWalletViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.network, "maroo-testnet")
         XCTAssertEqual(viewModel.chainId, "maroo-testnet-1")
         XCTAssertEqual(viewModel.walletAddress, "maroo1dailyMartAgentWallet")
+        XCTAssertEqual(viewModel.fundedWalletBalance, Decimal(string: "4997.622"))
         XCTAssertEqual(viewModel.asset, "OKRW")
         XCTAssertEqual(viewModel.singlePaymentMax, Decimal(100))
         XCTAssertEqual(viewModel.sessionTotalLimit, Decimal(100))
@@ -27,6 +28,7 @@ final class HermesChatDelegatedWalletViewModelTests: XCTestCase {
 
         XCTAssertEqual(snapshot.headerLabel, "AgentOS/OCG delegated wallet")
         XCTAssertEqual(snapshot.providerLine, "maroo testnet")
+        XCTAssertEqual(snapshot.fundedWalletBalanceLine, "4997.622 OKRW")
         XCTAssertEqual(snapshot.sessionLimitLine, "100 OKRW")
         XCTAssertEqual(snapshot.remainingLimitLine, "100 OKRW")
         XCTAssertEqual(snapshot.remainingSessionLimitSummaryLine, "Remaining session limit: 100 OKRW")
@@ -39,6 +41,7 @@ final class HermesChatDelegatedWalletViewModelTests: XCTestCase {
         XCTAssertEqual(snapshot.scopePresentation.rawScopeLine, "merchant.dailymart · grocery.purchase_essentials")
         XCTAssertTrue(snapshot.accessibilityLabel.contains("AgentOS/OCG delegated wallet"))
         XCTAssertTrue(snapshot.accessibilityLabel.contains("provider maroo testnet"))
+        XCTAssertTrue(snapshot.accessibilityLabel.contains("funded wallet balance 4997.622 OKRW"))
         XCTAssertTrue(snapshot.accessibilityLabel.contains("total session limit 100 OKRW"))
         XCTAssertTrue(snapshot.accessibilityLabel.contains("remaining session limit 100 OKRW"))
         XCTAssertTrue(snapshot.accessibilityLabel.contains("per payment max 100 OKRW"))
@@ -55,6 +58,7 @@ final class HermesChatDelegatedWalletViewModelTests: XCTestCase {
 
         XCTAssertEqual(snapshot.rows, [
             MeshDelegatedWalletPanelRow(label: "Provider", value: "maroo testnet"),
+            MeshDelegatedWalletPanelRow(label: "Total wallet balance", value: "4997.622 OKRW"),
             MeshDelegatedWalletPanelRow(label: "Total session limit", value: "100 OKRW"),
             MeshDelegatedWalletPanelRow(label: "Remaining limit", value: "100 OKRW"),
             MeshDelegatedWalletPanelRow(label: "Per-payment max", value: "100 OKRW"),
@@ -1009,7 +1013,7 @@ final class HermesChatDelegatedWalletViewModelTests: XCTestCase {
         let snapshot = wallet.panelSnapshot
         let action = wallet.callableAppPresentation(appName: "DailyMart")
 
-        XCTAssertEqual(action.subtitle, "maroo testnet OKRW · 100 OKRW limit · grocery.purchase_essentials")
+        XCTAssertEqual(action.subtitle, "maroo testnet OKRW · wallet 4997.622 OKRW · session 100 OKRW limit · grocery.purchase_essentials")
         XCTAssertEqual(action.capabilityScope, DailyMartDelegatedSpendingPolicy.capabilityScope)
         XCTAssertEqual(action.scopePresentation.status, .allowed)
         XCTAssertEqual(action.scopePresentation.label, "DailyMart grocery.purchase_essentials")
@@ -1045,7 +1049,7 @@ final class HermesChatDelegatedWalletViewModelTests: XCTestCase {
 
         let action = wallet.callableAppPresentation(appName: "MockMart")
 
-        XCTAssertEqual(action.subtitle, "mockchain OKRW · 40 OKRW limit · grocery.purchase_essentials")
+        XCTAssertEqual(action.subtitle, "mockchain OKRW · session 40 OKRW limit · grocery.purchase_essentials")
         XCTAssertEqual(action.capabilityScope, "grocery.purchase_essentials")
         XCTAssertEqual(action.scopePresentation.status, .unavailable)
         XCTAssertEqual(action.scopePresentation.label, "grocery.purchase_essentials")

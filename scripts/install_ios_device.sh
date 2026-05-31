@@ -170,11 +170,13 @@ for target in HermesChat DailyMart; do
     *) fail "No launch bundle id configured for $target" ;;
   esac
   launch_env_json="{}"
-  if [[ "$target" == "DailyMart" && ( ( -n "${MESHKIT_MAWS_BRIDGE_URL:-}" && -n "${MESHKIT_MAWS_AGENT_ID:-}" ) || -n "${MESHKIT_MAROO_OKRW_TRANSFER_BRIDGE_URL:-}" ) ]]; then
+  if [[ ( "$target" == "HermesChat" && -n "${MESHKIT_MAROO_OKRW_TRANSFER_BRIDGE_URL:-}" ) || ( "$target" == "DailyMart" && ( ( -n "${MESHKIT_MAWS_BRIDGE_URL:-}" && -n "${MESHKIT_MAWS_AGENT_ID:-}" ) || -n "${MESHKIT_MAROO_OKRW_TRANSFER_BRIDGE_URL:-}" ) ) ]]; then
     if [[ -z "${MESHKIT_IOS_BRIDGE_HOST:-}" ]]; then
       MESHKIT_IOS_BRIDGE_HOST="$(default_bridge_host || true)"
       export MESHKIT_IOS_BRIDGE_HOST
     fi
+    MESHKIT_IOS_LAUNCH_TARGET="$target"
+    export MESHKIT_IOS_LAUNCH_TARGET
     launch_payload="$(python3 - <<'PY'
 import json
 import os
@@ -201,14 +203,20 @@ def redacted(key, value):
         return "<redacted>"
     return value
 
-keys = [
-    "MESHKIT_MAWS_BRIDGE_URL",
-    "MESHKIT_MAWS_AGENT_ID",
-    "MESHKIT_MAWS_AUTHORIZATION",
-    "WAAS_AUTH_TOKEN",
-    "MESHKIT_MAROO_OKRW_TRANSFER_BRIDGE_URL",
-    "MESHKIT_MAROO_OKRW_TRANSFER_AUTHORIZATION",
-]
+target = os.environ.get("MESHKIT_IOS_LAUNCH_TARGET", "")
+if target == "HermesChat":
+    keys = [
+        "MESHKIT_MAROO_OKRW_TRANSFER_BRIDGE_URL",
+    ]
+else:
+    keys = [
+        "MESHKIT_MAWS_BRIDGE_URL",
+        "MESHKIT_MAWS_AGENT_ID",
+        "MESHKIT_MAWS_AUTHORIZATION",
+        "WAAS_AUTH_TOKEN",
+        "MESHKIT_MAROO_OKRW_TRANSFER_BRIDGE_URL",
+        "MESHKIT_MAROO_OKRW_TRANSFER_AUTHORIZATION",
+    ]
 launch = {}
 for key in keys:
     value = os.environ.get(key)
@@ -229,7 +237,7 @@ import sys
 print(json.dumps(json.loads(sys.argv[1])["launch"]))
 PY
 )"
-    python3 - "$launch_payload" <<'PY' > "$ARTIFACTS/DailyMart-launch-environment.json"
+    python3 - "$launch_payload" <<'PY' > "$ARTIFACTS/$target-launch-environment.json"
 import json
 import sys
 print(json.dumps(json.loads(sys.argv[1])["artifact"], indent=2, sort_keys=True))

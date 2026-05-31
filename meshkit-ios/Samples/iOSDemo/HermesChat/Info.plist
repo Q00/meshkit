@@ -12,5 +12,7 @@
   <key>UISupportedInterfaceOrientations</key><array><string>UIInterfaceOrientationPortrait</string></array>
   <key>CFBundleURLTypes</key><array><dict><key>CFBundleURLSchemes</key><array><string>meshkit-hermes</string></array></dict></array>
   <key>LSApplicationQueriesSchemes</key><array><string>mintnotes</string><string>dailymart</string></array>
+  <key>NSAppTransportSecurity</key><dict><key>NSAllowsArbitraryLoads</key><true/><key>NSAllowsLocalNetworking</key><true/></dict>
+  <key>NSLocalNetworkUsageDescription</key><string>Hermes Chat connects to the local Mac maroo OKRW testnet bridge to show the funded demo wallet balance.</string>
   <key>UIApplicationSceneManifest</key><dict><key>UIApplicationSupportsMultipleScenes</key><false/></dict>
 </dict></plist>

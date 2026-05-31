@@ -5,6 +5,7 @@ public struct MeshDelegatedWalletViewModel: Codable, Equatable, Sendable {
     public let network: String
     public let chainId: String
     public let walletAddress: String?
+    public let fundedWalletBalance: Decimal?
     public let asset: String
     public let singlePaymentMax: Decimal
     public let sessionTotalLimit: Decimal
@@ -20,6 +21,7 @@ public struct MeshDelegatedWalletViewModel: Codable, Equatable, Sendable {
     public init(
         providerMetadata: MeshAgentWalletProviderMetadata,
         walletAddress: String? = nil,
+        fundedWalletBalance: Decimal? = nil,
         policy: MeshAgentWalletDelegatedSpendingPolicy,
         targetBundleId: String
     ) throws {
@@ -31,6 +33,7 @@ public struct MeshDelegatedWalletViewModel: Codable, Equatable, Sendable {
         self.walletAddress = try walletAddress.map {
             try MeshAgentWalletProviderMetadata.stableValue("walletAddress", $0)
         }
+        self.fundedWalletBalance = fundedWalletBalance
         self.asset = policy.asset
         self.singlePaymentMax = policy.singlePaymentMax
         self.sessionTotalLimit = policy.sessionTotalLimit
@@ -51,6 +54,9 @@ public struct MeshDelegatedWalletViewModel: Codable, Equatable, Sendable {
         try MeshAgentWalletProviderMetadata.validateIdentifier("chainId", chainId)
         if let walletAddress {
             try MeshAgentWalletProviderMetadata.validateIdentifier("walletAddress", walletAddress)
+        }
+        if let fundedWalletBalance, fundedWalletBalance < 0 {
+            throw MeshKitValidationError.invalidAgentWalletIdentity("fundedWalletBalance")
         }
         try MeshAgentWalletProviderMetadata.validateIdentifier("asset", asset)
         guard singlePaymentMax > 0 else {
@@ -81,6 +87,20 @@ public struct MeshDelegatedWalletViewModel: Codable, Equatable, Sendable {
 
     public func callableAppPresentation(appName: String) -> MeshDelegatedWalletCallableAppPresentation {
         MeshDelegatedWalletCallableAppPresentation(appName: appName, wallet: self)
+    }
+
+    public func replacingFundedWalletBalance(_ balance: Decimal?) throws -> MeshDelegatedWalletViewModel {
+        try MeshDelegatedWalletViewModel(
+            providerMetadata: MeshAgentWalletProviderMetadata(
+                provider: provider,
+                network: network,
+                chainId: chainId
+            ),
+            walletAddress: walletAddress,
+            fundedWalletBalance: balance,
+            policy: try delegatedSpendingPolicy(),
+            targetBundleId: targetBundleId
+        )
     }
 
     public func applyingDailyMartReceiptResult(_ result: [String: String]) throws -> MeshDelegatedWalletViewModel {
@@ -117,6 +137,22 @@ public struct MeshDelegatedWalletViewModel: Codable, Equatable, Sendable {
                 expiresAt: expiresAt,
                 asset: asset
             )
+        )
+    }
+
+    private func delegatedSpendingPolicy() throws -> MeshAgentWalletDelegatedSpendingPolicy {
+        try MeshAgentWalletDelegatedSpendingPolicy(
+            policyId: policyId,
+            policyHash: policyHash,
+            consentGrantId: consentGrantId,
+            merchantScope: merchantScope,
+            capabilityScope: capabilityScope,
+            singlePaymentMax: singlePaymentMax,
+            sessionTotalLimit: sessionTotalLimit,
+            remainingLimit: remainingLimit,
+            expiresAt: expiresAt,
+            asset: asset,
+            recipientAddress: nil
         )
     }
 
@@ -187,6 +223,7 @@ public struct MeshDelegatedWalletViewModel: Codable, Equatable, Sendable {
                 chainId: chainId
             ),
             walletAddress: walletAddress,
+            fundedWalletBalance: fundedWalletBalance,
             policy: updatedPolicy,
             targetBundleId: targetBundleId
         )
@@ -469,6 +506,7 @@ public struct MeshDelegatedWalletPanelSnapshot: Equatable, Sendable {
     public static let headerLabel = "AgentOS/OCG delegated wallet"
     public static let providerLabel = "Provider"
     public static let totalSessionLimitLabel = "Total session limit"
+    public static let fundedWalletBalanceLabel = "Total wallet balance"
     public static let remainingLimitLabel = "Remaining limit"
     public static let remainingSessionLimitSummaryLabel = "Remaining session limit"
     public static let perPaymentMaxLabel = "Per-payment max"
@@ -481,6 +519,7 @@ public struct MeshDelegatedWalletPanelSnapshot: Equatable, Sendable {
     public let remainingSessionLimitSummaryLine: String
     public let authorizationLine: String
     public let providerLine: String
+    public let fundedWalletBalanceLine: String?
     public let sessionLimitLine: String
     public let remainingLimitLine: String
     public let perPaymentMaxLine: String
@@ -502,6 +541,9 @@ public struct MeshDelegatedWalletPanelSnapshot: Equatable, Sendable {
 
         self.headerLabel = Self.headerLabel
         self.providerLine = providerDisplay
+        self.fundedWalletBalanceLine = wallet.fundedWalletBalance.map {
+            "\(NSDecimalNumber(decimal: $0).stringValue) \(formatter.asset)"
+        }
         self.sessionLimitLine = formatter.totalSessionLimit
         self.remainingLimitLine = formatter.remainingLimit
         self.remainingSessionLimitSummaryLine = "\(Self.remainingSessionLimitSummaryLabel): \(formatter.remainingLimit)"
@@ -513,6 +555,9 @@ public struct MeshDelegatedWalletPanelSnapshot: Equatable, Sendable {
         self.scopePresentation = scopePresentation
         self.rows = [
             MeshDelegatedWalletPanelRow(label: Self.providerLabel, value: providerLine),
+            fundedWalletBalanceLine.map {
+                MeshDelegatedWalletPanelRow(label: Self.fundedWalletBalanceLabel, value: $0)
+            },
             MeshDelegatedWalletPanelRow(label: Self.totalSessionLimitLabel, value: sessionLimitLine),
             MeshDelegatedWalletPanelRow(label: Self.remainingLimitLabel, value: remainingLimitLine),
             MeshDelegatedWalletPanelRow(label: Self.perPaymentMaxLabel, value: perPaymentMaxLine),
@@ -520,8 +565,9 @@ public struct MeshDelegatedWalletPanelSnapshot: Equatable, Sendable {
             MeshDelegatedWalletPanelRow(label: Self.assetLabel, value: assetLine),
             MeshDelegatedWalletPanelRow(label: Self.scopeLabel, value: scopeLine),
             MeshDelegatedWalletPanelRow(label: Self.scopeStatusLabel, value: scopeStatusLine)
-        ]
-        self.accessibilityLabel = "\(Self.headerLabel) provider \(providerDisplay) total session limit \(formatter.totalSessionLimit) remaining session limit \(formatter.remainingLimit) remaining limit \(formatter.remainingLimit) per payment max \(formatter.perPaymentMax) authorization \(authorizationLine) asset \(formatter.asset) scope \(scopePresentation.label) status \(scopePresentation.statusLabel) raw scope \(scopePresentation.rawScopeLine)"
+        ].compactMap { $0 }
+        let fundedBalanceAccessibility = fundedWalletBalanceLine.map { " funded wallet balance \($0)" } ?? ""
+        self.accessibilityLabel = "\(Self.headerLabel) provider \(providerDisplay)\(fundedBalanceAccessibility) total session limit \(formatter.totalSessionLimit) remaining session limit \(formatter.remainingLimit) remaining limit \(formatter.remainingLimit) per payment max \(formatter.perPaymentMax) authorization \(authorizationLine) asset \(formatter.asset) scope \(scopePresentation.label) status \(scopePresentation.statusLabel) raw scope \(scopePresentation.rawScopeLine)"
     }
 
     private static func providerDisplayName(provider: String, network: String) -> String {
@@ -602,7 +648,10 @@ public struct MeshDelegatedWalletCallableAppPresentation: Equatable, Sendable {
         let providerDisplay = wallet.provider == "maroo" && wallet.network == "maroo-testnet"
             ? "maroo testnet"
             : wallet.provider
-        self.subtitle = "\(providerDisplay) \(formatter.asset) · \(formatter.remainingLimit) limit · \(wallet.capabilityScope)"
+        let balancePrefix = wallet.fundedWalletBalance.map {
+            "wallet \(NSDecimalNumber(decimal: $0).stringValue) \(formatter.asset) · "
+        } ?? ""
+        self.subtitle = "\(providerDisplay) \(formatter.asset) · \(balancePrefix)session \(formatter.remainingLimit) limit · \(wallet.capabilityScope)"
         self.capabilityScope = wallet.capabilityScope
         self.scopePresentation = scopePresentation
         self.accessibilityScopeLabel = "\(appName) \(scopePresentation.label) \(wallet.capabilityScope)"
@@ -697,16 +746,19 @@ public struct MeshDelegatedWalletPolicyFormatter: Equatable, Sendable {
 public enum HermesChatDelegatedWalletViewModels {
     public static let dailyMartTargetBundleId = "ai.meshkit.sample.dailymart"
     public static let demoWalletAddress = "maroo1dailyMartAgentWallet"
+    public static let demoFundedWalletBalance = Decimal(string: "4997.622")!
 
     public static func viewModel(
         providerMetadata: MeshAgentWalletProviderMetadata,
         walletAddress: String? = nil,
+        fundedWalletBalance: Decimal? = nil,
         policy: MeshAgentWalletDelegatedSpendingPolicy,
         targetBundleId: String
     ) throws -> MeshDelegatedWalletViewModel {
         try MeshDelegatedWalletViewModel(
             providerMetadata: providerMetadata,
             walletAddress: walletAddress,
+            fundedWalletBalance: fundedWalletBalance,
             policy: policy,
             targetBundleId: targetBundleId
         )
@@ -722,6 +774,7 @@ public enum HermesChatDelegatedWalletViewModels {
                 adapterId: "maroo-testnet-agent-wallet-adapter"
             ),
             walletAddress: walletAddress,
+            fundedWalletBalance: demoFundedWalletBalance,
             policy: DailyMartDelegatedSpendingPolicy.expectedPolicy(expiresAt: expiresAt),
             targetBundleId: dailyMartTargetBundleId
         )

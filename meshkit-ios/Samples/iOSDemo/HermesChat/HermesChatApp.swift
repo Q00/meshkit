@@ -81,6 +81,7 @@ struct HermesChatApp: App {
                 openDailyMartSavedConsentReceipt: openDailyMartSavedConsentReceipt
             )
             .onAppear { startDemoScriptIfNeeded() }
+            .task { await refreshMarooWalletBalanceIfAvailable() }
             .onChange(of: draftMessage) { newValue in
                 if !hasUserPrompt && newValue.count > 70 {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.55) {
@@ -249,6 +250,24 @@ struct HermesChatApp: App {
         }
     }
 
+    private func refreshMarooWalletBalanceIfAvailable() async {
+        guard let healthURL = MarooDemoWalletBalanceClient.healthURLFromEnvironment() else { return }
+        do {
+            let balance = try await MarooDemoWalletBalanceClient.fetchBalance(from: healthURL)
+            await MainActor.run {
+                if let updated = try? delegatedWallet.replacingFundedWalletBalance(balance) {
+                    delegatedWallet = updated
+                }
+            }
+        } catch {
+            await MainActor.run {
+                if lastAction == "Idle" {
+                    auditTrail = "maroo.wallet_balance.health_unavailable · using bundled demo balance · \(error.localizedDescription)"
+                }
+            }
+        }
+    }
+
     private func submitPrompt(_ message: String) {
         let normalizedMessage = message.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !normalizedMessage.isEmpty else { return }
@@ -402,6 +421,48 @@ struct HermesChatApp: App {
         lastAction = "DailyMart receipt proof is target-owned"
         callbackText = "Hermes cannot fabricate a DailyMart receipt. Open the DailyMart target proof only after an external target-signed callback has been accepted."
         auditTrail = "order-proof URL side channel removed · completion requires target-owned signed MeshReceipt · caller private key is not accepted as target proof"
+    }
+}
+
+private enum MarooDemoWalletBalanceClient {
+    private static let transferURLKey = "MESHKIT_MAROO_OKRW_TRANSFER_BRIDGE_URL"
+
+    static func healthURLFromEnvironment(
+        environment: [String: String] = ProcessInfo.processInfo.environment
+    ) -> URL? {
+        guard let rawURL = environment[transferURLKey]?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !rawURL.isEmpty,
+              var components = URLComponents(string: rawURL) else {
+            return nil
+        }
+        components.path = "/health"
+        components.query = nil
+        components.fragment = nil
+        return components.url
+    }
+
+    static func fetchBalance(from url: URL) async throws -> Decimal {
+        let (data, response) = try await URLSession.shared.data(from: url)
+        if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
+            throw MeshKitValidationError.invalidAgentWalletIdentity("marooBridgeHealthStatus")
+        }
+        let payload = try JSONDecoder().decode(HealthResponse.self, from: data)
+        guard payload.ok,
+              let rawBalance = payload.data.signerBalanceOKRW,
+              let balance = Decimal(string: rawBalance),
+              balance >= 0 else {
+            throw MeshKitValidationError.invalidAgentWalletIdentity("signerBalanceOKRW")
+        }
+        return balance
+    }
+
+    private struct HealthResponse: Decodable {
+        let ok: Bool
+        let data: HealthData
+    }
+
+    private struct HealthData: Decodable {
+        let signerBalanceOKRW: String?
     }
 }
 
