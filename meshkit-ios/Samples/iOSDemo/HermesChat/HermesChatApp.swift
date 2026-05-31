@@ -426,6 +426,16 @@ struct HermesChatApp: App {
             pendingReceiptStore.register(request: request, capabilityId: "grocery.purchase_essentials")
             auditTrail = "Saved-grant MCP request signed with fresh nonce/timestamp/payloadHash. anchoring_reference=\(invocation.anchoringReference.anchorId) request_hash=\(invocation.signedRequestHash.value)"
             startDailyMartBackgroundProcessing(auditId: request.requestId)
+            let capability = OpenCapabilityGraph.dailyMartSample.findCapability("grocery.purchase_essentials")
+            let url = try MeshURLRouter.invokeURL(scheme: capability?.urlScheme ?? "dailymart://mesh/invoke", request: request)
+            UIApplication.shared.open(url) { opened in
+                if !opened {
+                    isBackgroundProcessing = false
+                    lastAction = "DailyMart saved-consent call blocked"
+                    callbackText = "DailyMart could not be opened for the saved-consent MCP request."
+                    auditTrail = "DailyMart saved-consent invocation blocked before target dispatch: app_open_failed"
+                }
+            }
         } catch {
             lastAction = "DailyMart saved-consent call blocked"
             isBackgroundProcessing = false
@@ -593,13 +603,13 @@ private struct HermesRootView: View {
                 composer
             }
         }
-        .alert("Foreground proof: DailyMart stays background", isPresented: $showSavedConsentForegroundAlert) {
+        .alert("Saved consent: no approval screen", isPresented: $showSavedConsentForegroundAlert) {
             Button("Run background MCP call") {
                 confirmDailyMartSavedConsentCall()
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("Hermes Chat is foreground now. This second purchase reuses the saved DailyMart consent grant and will NOT open the DailyMart approval screen.")
+            Text("This second purchase reuses the saved DailyMart consent grant. DailyMart will execute the signed request without showing another approval screen, then return a target-signed receipt.")
         }
     }
 

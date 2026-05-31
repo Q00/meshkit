@@ -376,13 +376,24 @@ struct DailyMartApp: App {
                 .dailyMartPreExecutionGuard(freshnessStore: preExecutionFreshnessStore)
                 .acceptForWalletExecution(decoded)
             request = decoded
-            orderId = "DM-2026-0509-001"
-            orderSource = "foreground consent grant"
+            let isSavedConsentRequest = decoded.requestId.hasPrefix("ios-grocery-saved-consent")
+            orderId = isSavedConsentRequest ? "DM-2026-0509-002" : "DM-2026-0509-001"
+            orderSource = isSavedConsentRequest ? "saved-consent background MCP" : "foreground consent grant"
             didCompleteOrder = false
             isProcessing = false
             order = "No order yet."
             auditTrail = "Consent and execution history will appear here."
-            incoming = "Pre-execution guard passed · nonce \(accepted.nonce) · OKRW ₩\(accepted.executionRequest.amount) · available ₩\(accepted.availableLimitBeforeExecution)"
+            incoming = isSavedConsentRequest
+                ? "Saved-consent signed request accepted · nonce \(accepted.nonce) · OKRW ₩\(accepted.executionRequest.amount) · approval_screen=false"
+                : "Pre-execution guard passed · nonce \(accepted.nonce) · OKRW ₩\(accepted.executionRequest.amount) · available ₩\(accepted.availableLimitBeforeExecution)"
+            if isSavedConsentRequest {
+                isProcessing = true
+                order = "Saved consent accepted. DailyMart is executing the grocery MCP request without another approval screen."
+                auditTrail = "saved_consent_request.accepted\nrequest_id=\(decoded.requestId)\napproval_screen=false\navailable_limit_okrw=\(accepted.availableLimitBeforeExecution)\norder_placed=false"
+                Task { @MainActor in
+                    await executeApprovedOKRWPurchase(decoded)
+                }
+            }
         } catch {
             request = nil
             incoming = "Rejected MeshKit request: \(error)"
@@ -422,6 +433,9 @@ struct DailyMartApp: App {
     @MainActor
     private func executeApprovedOKRWPurchase(_ request: MeshRequest) async {
         do {
+            let isSavedConsentRequest = request.requestId.hasPrefix("ios-grocery-saved-consent")
+            let currentOrderId = isSavedConsentRequest ? "DM-2026-0509-002" : "DM-2026-0509-001"
+            let currentOrderSource = isSavedConsentRequest ? "saved-consent background MCP" : "foreground consent grant"
             let audit = try MeshTarget.validatePublicMesh(
                 request: request,
                 policy: MeshTargetPolicy(
@@ -471,28 +485,35 @@ struct DailyMartApp: App {
             let receipt = try signedReceipt(
                 for: request,
                 orchestrationResult: orchestrationResult,
-                orderId: "DM-2026-0509-001"
+                orderId: currentOrderId
             )
             let encodedReceipt = try receipt.encodedForURLScheme()
             let callbackStatus = receipt.result["chainStatus"] == "confirmed" ? "purchased" : "submitted"
-            orderId = "DM-2026-0509-001"
-            orderSource = "foreground consent grant"
+            orderId = currentOrderId
+            orderSource = currentOrderSource
             didCompleteOrder = receipt.result["chainStatus"] == "confirmed"
             isProcessing = true
             if didCompleteOrder {
-                incoming = "Target-owned signed OKRW receipt emitted · foreground consent grant"
-                order = "Order DM-2026-0509-001 — 주문 완료\n• 세탁세제 × 1\n• 화장지 × 2\n• 생수 2L × 6\nTotal: ₩100\nDelivery: 오늘 19:00–21:00"
+                incoming = isSavedConsentRequest
+                    ? "Target-owned signed OKRW receipt emitted · saved-consent background MCP · approval_screen=false"
+                    : "Target-owned signed OKRW receipt emitted · foreground consent grant"
+                order = "Order \(currentOrderId) — 주문 완료\n• 세탁세제 × 1\n• 화장지 × 2\n• 생수 2L × 6\nTotal: ₩100\nDelivery: 오늘 19:00–21:00"
                 receiptChainProofTitle = "Confirmed provider-neutral chain proof"
                 receiptChainProofAccessibilityPrefix = "Confirmed chain proof"
                 receiptChainProofFields = DailyMartReceiptProofField.confirmedFields(from: receipt.result)
             } else {
-                incoming = "Target-owned signed OKRW receipt emitted · awaiting maroo confirmation"
+                incoming = isSavedConsentRequest
+                    ? "Target-owned signed OKRW receipt emitted · saved-consent background MCP · awaiting maroo confirmation"
+                    : "Target-owned signed OKRW receipt emitted · awaiting maroo confirmation"
                 order = "OKRW execution submitted. No order is marked paid until maroo returns a live confirmed txHash."
                 receiptChainProofTitle = "Pending provider-neutral chain proof"
                 receiptChainProofAccessibilityPrefix = "Pending chain proof"
                 receiptChainProofFields = DailyMartReceiptProofField.pendingFields(from: receipt.result)
             }
             auditTrail = "wallet_policy_gate=\(gate.policyEvaluation.status.rawValue)\nscope_consent_gate=\(gate.scopeConsent.status.rawValue)\nrequest_id=\(audit.requestId)\nmerchant_scope=\(gate.scopeConsent.merchantScope)\ncapability_scope=\(gate.scopeConsent.capabilityScope)\nconsent_grant_id=\(gate.scopeConsent.consentGrantId)\navailable_limit_okrw=\(gate.availableLimitBeforeExecution)\nmesh_receipt_signed=true\nchain_status=\(receipt.result["chainStatus"] ?? "pending")\npresentation_state=\(receipt.result["presentationState"] ?? "submitted_not_final")\nasset=\(receipt.result["asset"] ?? DailyMartDelegatedSpendingPolicy.asset)"
+            if isSavedConsentRequest {
+                auditTrail = "\(auditTrail)\napproval_screen=false\nsource=saved-consent background MCP"
+            }
             openHermesCallback(status: callbackStatus, requestId: request.requestId, encodedReceipt: encodedReceipt)
         } catch {
             isProcessing = false
