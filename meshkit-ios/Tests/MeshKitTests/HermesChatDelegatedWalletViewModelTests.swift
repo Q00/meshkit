@@ -31,6 +31,7 @@ final class HermesChatDelegatedWalletViewModelTests: XCTestCase {
         XCTAssertNil(snapshot.fundedWalletBalanceLine)
         XCTAssertEqual(snapshot.sessionLimitLine, "100 OKRW")
         XCTAssertEqual(snapshot.remainingLimitLine, "100 OKRW")
+        XCTAssertEqual(snapshot.primaryWalletSummaryLine, "Remaining session limit: 100 OKRW")
         XCTAssertEqual(snapshot.remainingSessionLimitSummaryLine, "Remaining session limit: 100 OKRW")
         XCTAssertEqual(snapshot.perPaymentMaxLine, "100 OKRW")
         XCTAssertEqual(snapshot.authorizationLine, "OKRW · DailyMart grocery.purchase_essentials")
@@ -42,7 +43,7 @@ final class HermesChatDelegatedWalletViewModelTests: XCTestCase {
         XCTAssertTrue(snapshot.accessibilityLabel.contains("AgentOS/OCG delegated wallet"))
         XCTAssertTrue(snapshot.accessibilityLabel.contains("provider maroo testnet"))
         XCTAssertFalse(snapshot.accessibilityLabel.contains("funded wallet balance"))
-        XCTAssertTrue(snapshot.accessibilityLabel.contains("total session limit 100 OKRW"))
+        XCTAssertTrue(snapshot.accessibilityLabel.contains("session spend limit 100 OKRW"))
         XCTAssertTrue(snapshot.accessibilityLabel.contains("remaining session limit 100 OKRW"))
         XCTAssertTrue(snapshot.accessibilityLabel.contains("per payment max 100 OKRW"))
         XCTAssertTrue(snapshot.accessibilityLabel.contains("authorization OKRW · DailyMart grocery.purchase_essentials"))
@@ -58,7 +59,7 @@ final class HermesChatDelegatedWalletViewModelTests: XCTestCase {
 
         XCTAssertEqual(snapshot.rows, [
             MeshDelegatedWalletPanelRow(label: "Provider", value: "maroo testnet"),
-            MeshDelegatedWalletPanelRow(label: "Total session limit", value: "100 OKRW"),
+            MeshDelegatedWalletPanelRow(label: "Session spend limit", value: "100 OKRW"),
             MeshDelegatedWalletPanelRow(label: "Remaining limit", value: "100 OKRW"),
             MeshDelegatedWalletPanelRow(label: "Per-payment max", value: "100 OKRW"),
             MeshDelegatedWalletPanelRow(label: "Authorization", value: "OKRW · DailyMart grocery.purchase_essentials"),
@@ -94,14 +95,30 @@ final class HermesChatDelegatedWalletViewModelTests: XCTestCase {
 
         let component = MeshDelegatedWalletPanelComponent(wallet: wallet)
 
-        XCTAssertEqual(component.renderedLines[2], "Total session limit: 250 OKRW")
+        XCTAssertEqual(component.renderedLines[2], "Session spend limit: 250 OKRW")
         XCTAssertEqual(component.renderedPanelLines[1], "Remaining session limit: 175 OKRW")
         XCTAssertTrue(component.renderedLines.contains("Remaining limit: 175 OKRW"))
         XCTAssertTrue(component.renderedPanelLines.contains("Remaining limit: 175 OKRW"))
         XCTAssertTrue(component.renderedLines.contains("Per-payment max: 75 OKRW"))
         XCTAssertTrue(component.renderedPanelLines.contains("Authorization: OKRW · grocery.purchase_essentials"))
         XCTAssertTrue(component.accessibilityLabel.contains("remaining session limit 175 OKRW"))
-        XCTAssertTrue(component.accessibilityLabel.contains("total session limit 250 OKRW"))
+        XCTAssertTrue(component.accessibilityLabel.contains("session spend limit 250 OKRW"))
+    }
+
+    func testDelegatedWalletPanelPrioritizesLiveWalletBalanceWhenFundedBalanceIsAvailable() throws {
+        let wallet = try HermesChatDelegatedWalletViewModels
+            .marooTestnetOKRWDailyMartGrocerySession()
+            .replacingFundedWalletBalance(Decimal(string: "4797.433")!)
+
+        let snapshot = wallet.panelSnapshot
+        let component = MeshDelegatedWalletPanelComponent(snapshot: snapshot)
+
+        XCTAssertEqual(snapshot.fundedWalletBalanceLine, "4797.433 OKRW")
+        XCTAssertEqual(snapshot.primaryWalletSummaryLine, "Live wallet balance: 4797.433 OKRW")
+        XCTAssertEqual(component.renderedPanelLines[1], "Live wallet balance: 4797.433 OKRW")
+        XCTAssertEqual(snapshot.rows[1], MeshDelegatedWalletPanelRow(label: "Live wallet balance", value: "4797.433 OKRW"))
+        XCTAssertTrue(snapshot.rows.contains(MeshDelegatedWalletPanelRow(label: "Session spend limit", value: "100 OKRW")))
+        XCTAssertTrue(snapshot.rows.contains(MeshDelegatedWalletPanelRow(label: "Remaining limit", value: "100 OKRW")))
     }
 
     func testDelegatedWalletPanelComponentRendersPerPaymentMaxFromPolicyData() throws {

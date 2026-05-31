@@ -505,9 +505,10 @@ public struct MeshDelegatedWalletReceiptDecrementHandler: Equatable, Sendable {
 public struct MeshDelegatedWalletPanelSnapshot: Equatable, Sendable {
     public static let headerLabel = "AgentOS/OCG delegated wallet"
     public static let providerLabel = "Provider"
-    public static let totalSessionLimitLabel = "Total session limit"
-    public static let fundedWalletBalanceLabel = "Total wallet balance"
+    public static let totalSessionLimitLabel = "Session spend limit"
+    public static let fundedWalletBalanceLabel = "Live wallet balance"
     public static let remainingLimitLabel = "Remaining limit"
+    public static let liveWalletBalanceSummaryLabel = "Live wallet balance"
     public static let remainingSessionLimitSummaryLabel = "Remaining session limit"
     public static let perPaymentMaxLabel = "Per-payment max"
     public static let authorizationLabel = "Authorization"
@@ -516,6 +517,7 @@ public struct MeshDelegatedWalletPanelSnapshot: Equatable, Sendable {
     public static let scopeStatusLabel = "Scope status"
 
     public let headerLabel: String
+    public let primaryWalletSummaryLine: String
     public let remainingSessionLimitSummaryLine: String
     public let authorizationLine: String
     public let providerLine: String
@@ -546,6 +548,9 @@ public struct MeshDelegatedWalletPanelSnapshot: Equatable, Sendable {
         }
         self.sessionLimitLine = formatter.totalSessionLimit
         self.remainingLimitLine = formatter.remainingLimit
+        self.primaryWalletSummaryLine = fundedWalletBalanceLine.map {
+            "\(Self.liveWalletBalanceSummaryLabel): \($0)"
+        } ?? "\(Self.remainingSessionLimitSummaryLabel): \(formatter.remainingLimit)"
         self.remainingSessionLimitSummaryLine = "\(Self.remainingSessionLimitSummaryLabel): \(formatter.remainingLimit)"
         self.perPaymentMaxLine = formatter.perPaymentMax
         self.assetLine = formatter.asset
@@ -567,7 +572,7 @@ public struct MeshDelegatedWalletPanelSnapshot: Equatable, Sendable {
             MeshDelegatedWalletPanelRow(label: Self.scopeStatusLabel, value: scopeStatusLine)
         ].compactMap { $0 }
         let fundedBalanceAccessibility = fundedWalletBalanceLine.map { " funded wallet balance \($0)" } ?? ""
-        self.accessibilityLabel = "\(Self.headerLabel) provider \(providerDisplay)\(fundedBalanceAccessibility) total session limit \(formatter.totalSessionLimit) remaining session limit \(formatter.remainingLimit) remaining limit \(formatter.remainingLimit) per payment max \(formatter.perPaymentMax) authorization \(authorizationLine) asset \(formatter.asset) scope \(scopePresentation.label) status \(scopePresentation.statusLabel) raw scope \(scopePresentation.rawScopeLine)"
+        self.accessibilityLabel = "\(Self.headerLabel) provider \(providerDisplay)\(fundedBalanceAccessibility) session spend limit \(formatter.totalSessionLimit) remaining session limit \(formatter.remainingLimit) remaining limit \(formatter.remainingLimit) per payment max \(formatter.perPaymentMax) authorization \(authorizationLine) asset \(formatter.asset) scope \(scopePresentation.label) status \(scopePresentation.statusLabel) raw scope \(scopePresentation.rawScopeLine)"
     }
 
     private static func providerDisplayName(provider: String, network: String) -> String {
@@ -616,7 +621,7 @@ public struct MeshDelegatedWalletPanelComponent: Equatable, Sendable {
     }
 
     public var renderedPanelLines: [String] {
-        [snapshot.headerLabel, snapshot.remainingSessionLimitSummaryLine] +
+        [snapshot.headerLabel, snapshot.primaryWalletSummaryLine] +
             snapshot.rows.map { "\($0.label): \($0.value)" }
     }
 
