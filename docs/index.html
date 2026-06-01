@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="ko">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>MeshKit x maroo | Elevator Pitch</title>
+  <title>MeshKit Protocol | Agent-Call Receipts</title>
   <style>
     :root {
       --ink: #111827;
@@ -25,9 +25,9 @@
 
     body,
     .slide * {
-      word-break: keep-all;
+      word-break: normal;
       overflow-wrap: break-word;
-      line-break: strict;
+      line-break: auto;
     }
 
     h1,
@@ -35,8 +35,7 @@
     .lead,
     .sub,
     .oath,
-    .oath-copy,
-    .source {
+    .oath-copy {
       text-wrap: balance;
     }
 
@@ -868,6 +867,178 @@
       color: #f9fafb;
     }
 
+    .milestone-layout {
+      width: min(1240px, 100%);
+      display: grid;
+      gap: 52px;
+    }
+
+    .milestone-copy {
+      max-width: 920px;
+    }
+
+    .rail-stage {
+      position: relative;
+      padding: 30px 8px 8px;
+    }
+
+    .rail-stage::before {
+      content: "";
+      position: absolute;
+      left: 4%;
+      right: 4%;
+      top: 84px;
+      height: 5px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--aqua), var(--blue), var(--amber), var(--pink));
+      box-shadow: 0 14px 36px rgba(37, 99, 235, 0.18);
+    }
+
+    .rail-track {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .rail-step {
+      display: grid;
+      grid-template-rows: 78px auto;
+      gap: 18px;
+      min-width: 0;
+    }
+
+    .rail-marker {
+      display: grid;
+      place-items: center;
+      width: 76px;
+      height: 76px;
+      margin: 0 auto;
+      border: 5px solid #ffffff;
+      border-radius: 50%;
+      background: #111827;
+      color: #ffffff;
+      font-size: 20px;
+      font-weight: 950;
+      box-shadow: 0 20px 46px rgba(17, 24, 39, 0.22);
+    }
+
+    .rail-step:nth-child(2) .rail-marker {
+      background: var(--blue);
+    }
+
+    .rail-step:nth-child(3) .rail-marker {
+      background: var(--aqua);
+    }
+
+    .rail-step:nth-child(4) .rail-marker {
+      background: var(--amber);
+    }
+
+    .rail-step:nth-child(5) .rail-marker {
+      background: #be185d;
+    }
+
+    .rail-body {
+      min-height: 146px;
+      padding: 16px;
+      border: 1px solid rgba(17, 24, 39, 0.12);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.82);
+      box-shadow: 0 16px 38px rgba(17, 24, 39, 0.08);
+    }
+
+    .rail-body strong {
+      display: block;
+      color: #111827;
+      font-size: 16px;
+      line-height: 1.18;
+    }
+
+    .rail-body span {
+      display: block;
+      margin-top: 9px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .founder-layout {
+      width: min(1180px, 100%);
+      display: grid;
+      grid-template-columns: minmax(280px, 0.68fr) minmax(420px, 1.32fr);
+      gap: 48px;
+      align-items: center;
+    }
+
+    .portrait-frame {
+      position: relative;
+      padding: 14px;
+      border: 1px solid rgba(17, 24, 39, 0.13);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.84);
+      box-shadow: var(--shadow);
+    }
+
+    .portrait-frame img {
+      display: block;
+      width: 100%;
+      aspect-ratio: 1.18;
+      border-radius: 8px;
+      object-fit: cover;
+      object-position: 42% 50%;
+    }
+
+    .portrait-caption {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 850;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .portrait-caption b {
+      color: #111827;
+      letter-spacing: 0;
+      text-transform: none;
+    }
+
+    .founder-copy h2 {
+      max-width: 780px;
+    }
+
+    .founder-proof-list {
+      display: grid;
+      gap: 12px;
+      margin-top: 28px;
+    }
+
+    .founder-proof {
+      display: grid;
+      grid-template-columns: 170px minmax(0, 1fr);
+      gap: 18px;
+      align-items: baseline;
+      padding: 14px 0;
+      border-top: 1px solid var(--line);
+    }
+
+    .founder-proof strong {
+      color: #111827;
+      font-size: 16px;
+      line-height: 1.25;
+    }
+
+    .founder-proof span {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.48;
+    }
+
     .slide-nav {
       position: fixed;
       z-index: 10;
@@ -887,20 +1058,6 @@
       box-shadow: 0 6px 18px rgba(17, 24, 39, 0.12);
     }
 
-    .source {
-      position: absolute;
-      left: 56px;
-      bottom: 28px;
-      color: rgba(17, 24, 39, 0.52);
-      font-size: 12px;
-      font-weight: 700;
-    }
-
-    .source a {
-      text-decoration: underline;
-      text-underline-offset: 3px;
-    }
-
     @media (max-width: 880px) {
       .slide {
         padding: 36px 22px 54px;
@@ -913,8 +1070,41 @@
 
       .slide-inner.video-layout,
       .image-layout,
+      .founder-layout,
       .video-stage {
         grid-template-columns: 1fr;
+      }
+
+      .milestone-layout {
+        gap: 28px;
+      }
+
+      .rail-stage {
+        padding-top: 0;
+      }
+
+      .rail-stage::before {
+        left: 38px;
+        right: auto;
+        top: 8px;
+        bottom: 8px;
+        width: 5px;
+        height: auto;
+        background: linear-gradient(180deg, var(--aqua), var(--blue), var(--amber), var(--pink));
+      }
+
+      .rail-track {
+        grid-template-columns: 1fr;
+      }
+
+      .rail-step {
+        grid-template-columns: 76px minmax(0, 1fr);
+        grid-template-rows: auto;
+        align-items: center;
+      }
+
+      .rail-marker {
+        margin: 0;
       }
 
       .manifesto-inner {
@@ -957,6 +1147,11 @@
         grid-template-columns: 1fr;
       }
 
+      .founder-proof {
+        grid-template-columns: 1fr;
+        gap: 6px;
+      }
+
       .lane-head {
         display: grid;
       }
@@ -979,9 +1174,6 @@
         transform: translateX(50%);
       }
 
-      .source {
-        display: none;
-      }
     }
 
     @media print {
@@ -1016,21 +1208,22 @@
     <a href="#slide-7" aria-label="7"></a>
     <a href="#slide-8" aria-label="8"></a>
     <a href="#slide-9" aria-label="9"></a>
+    <a href="#slide-10" aria-label="10"></a>
   </nav>
 
   <main class="deck">
     <section class="slide" id="slide-1">
       <div class="slide-inner">
         <div>
-          <p class="kicker">01 / Closed assistants</p>
-          <h1>AI should not become another OS lock-in.</h1>
-          <p class="lead">AI는 앱을 호출해야 한다.<br />하지만 호출권은 OS가 독점하고 있다.</p>
-          <p class="sub"><span class="nb">Gemini</span>와 <span class="nb">Apple Intelligence</span>는 방향을 보여줬다. 이제 필요한 것은 lock-in이 아니라, 모든 앱이 참여하는 공개 실행 표준이다.</p>
+          <p class="kicker">01 / Manifesto</p>
+          <h1>The agent OS emerges outside the OS.</h1>
+          <p class="lead">Not a home screen. A public call graph.</p>
+          <p class="sub">Apps publish actions. Agents call them. Every call leaves a receipt.</p>
           <div class="tag-row">
-            <span class="tag">Android lock-in</span>
-            <span class="tag">iOS lock-in</span>
-            <span class="tag">Screen automation</span>
-            <span class="tag">Platform APIs</span>
+            <span class="tag">Public call graph</span>
+            <span class="tag">Signed app calls</span>
+            <span class="tag">Target-owned receipts</span>
+            <span class="tag">Money rails</span>
           </div>
         </div>
 
@@ -1049,41 +1242,40 @@
             </div>
           </div>
           <div class="command-layer">
-            <div class="prompt">New primitive</div>
-            <strong>AI era needs apps that call,<br>not just apps that answer.</strong>
-            <span>앱 호출의 미래를 특정 OS 사업자나 슈퍼앱에 맡길 수 없다.</span>
+            <div class="prompt">Movement thesis</div>
+            <strong>Build the call graph before platforms close it.</strong>
+            <span>MeshKit is the protocol layer for signed app calls.</span>
           </div>
         </div>
       </div>
-      <div class="source">Source: <a href="https://github.com/Q00/meshkit">Q00/meshkit</a></div>
     </section>
 
     <section class="slide" id="slide-2">
       <div class="slide-inner">
         <div>
-          <p class="kicker">02 / MeshKit</p>
-          <h2>Apps become callers, not just endpoints.</h2>
-          <p class="lead">MeshKit은 <span class="nb">App-to-App MCP</span>다.<br />앱은 이제 endpoint가 아니라 실행자다.</p>
+          <p class="kicker">02 / Capture risk</p>
+          <h2>Apple and Google are closing the call layer.</h2>
+          <p class="lead">Apple Intelligence and Gemini need app actions. Their default path makes every action platform-specific.</p>
           <div class="steps">
             <div class="step">
               <div class="num">1</div>
               <div>
-                <strong>Caller and callee apps</strong>
-                <span>앱은 다른 앱의 capability를 호출한다.</span>
+                <strong>Apple App Intents</strong>
+                <span>iOS owns schema, permission, and routing.</span>
               </div>
             </div>
             <div class="step">
               <div class="num">2</div>
               <div>
-                <strong>Business logic as capability</strong>
-                <span>서버가 아니라 허용된 business logic만 연다.</span>
+                <strong>Android AppFunctions</strong>
+                <span>Android defines a second action surface.</span>
               </div>
             </div>
             <div class="step">
               <div class="num">3</div>
               <div>
-                <strong>No central super app needed</strong>
-                <span>슈퍼앱 없이 workflow를 만든다.</span>
+                <strong>MeshKit</strong>
+                <span>One signed call outside assistant silos.</span>
               </div>
             </div>
           </div>
@@ -1091,27 +1283,142 @@
 
         <div class="mesh-visual" aria-hidden="true">
           <div class="mesh-ring">
-            <div class="node agent">Commerce<br>Caller</div>
-            <div class="node chat">Notes<br>Callee</div>
-            <div class="node notes">Calendar<br>Callee</div>
-            <div class="node wallet">Wallet<br>Callee</div>
-            <div class="center-label">MCP<br>Logic</div>
+            <div class="node agent">Apple<br>Intents</div>
+            <div class="node chat">Android<br>Functions</div>
+            <div class="node notes">Super App<br>APIs</div>
+            <div class="node wallet">Public<br>Protocol</div>
+            <div class="center-label">Agent<br>Call</div>
           </div>
         </div>
       </div>
-      <div class="source">Core claim: every installed app can become a trusted MCP caller and callee</div>
     </section>
 
     <section class="slide" id="slide-3">
+      <div class="slide-inner">
+        <div>
+          <p class="kicker">03 / Protocol</p>
+          <h2>Apps are not endpoints. They are callers and callees.</h2>
+          <p class="lead">MeshKit turns each app action into a signed call.</p>
+          <p class="sub">One envelope. One policy. One receipt.</p>
+        </div>
+
+        <div class="api-board" aria-label="MeshKit protocol primitives">
+          <div class="api-card">
+            <b>Call</b>
+            <div>
+              <code>targetAppId + action + payloadHash</code>
+              <span>Names the exact action the agent wants.</span>
+            </div>
+          </div>
+          <div class="api-card">
+            <b>Policy</b>
+            <div>
+              <code>scope + budget + expiry</code>
+              <span>Limits what the agent can do.</span>
+            </div>
+          </div>
+          <div class="api-card">
+            <b>Receipt</b>
+            <div>
+              <code>receiptId + targetSignature</code>
+              <span>The target app signs the result.</span>
+            </div>
+          </div>
+          <div class="api-card">
+            <b>Settlement</b>
+            <div>
+              <code>optional txHash</code>
+              <span>Money calls attach a rail reference.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" id="slide-4">
+      <div class="slide-inner">
+        <div>
+          <p class="kicker">04 / Transparent layer</p>
+          <h2>Off-chain execution. On-chain inclusion.</h2>
+          <p class="lead">Blockchain anchors signed receipt roots, not app logic.</p>
+          <p class="sub">Stablecoin gas fees make the transparency layer cheap to maintain.</p>
+
+          <div class="maroo-stack">
+            <div class="stack-item">
+              <strong>Off-chain</strong>
+              <span>Apps execute fast and sign receipts.</span>
+            </div>
+            <div class="stack-item">
+              <strong>On-chain</strong>
+              <span>Receipt hashes anchor into a public log.</span>
+            </div>
+            <div class="stack-item">
+              <strong>Inclusion</strong>
+              <span>Merkle-style inclusion proves the record exists.</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="hybrid-map" aria-label="off-chain and on-chain transparency path">
+          <div class="lane">
+            <div class="lane-head">
+              <strong>Off-chain call path</strong>
+              <span>Private execution, signed receipts</span>
+            </div>
+            <div class="lane-nodes">
+              <div class="lane-node">
+                <b>Agent</b>
+                <small>requestHash</small>
+              </div>
+              <div class="lane-node">
+                <b>App</b>
+                <small>targetSignature</small>
+              </div>
+              <div class="lane-node">
+                <b>Wallet</b>
+                <small>policyHash</small>
+              </div>
+            </div>
+          </div>
+
+          <div class="link-strip">
+            <strong>Public inclusion layer</strong>
+            <code>requestHash + policyHash + receiptRoot + txHash</code>
+          </div>
+
+          <div class="lane">
+            <div class="lane-head">
+              <strong>On-chain log path</strong>
+              <span>Append-only root, public verification</span>
+            </div>
+            <div class="lane-nodes">
+              <div class="lane-node">
+                <b>Receipt Root</b>
+                <small>Merkle-style</small>
+              </div>
+              <div class="lane-node">
+                <b>maroo Tx</b>
+                <small>txHash</small>
+              </div>
+              <div class="lane-node">
+                <b>Explorer</b>
+                <small>public audit</small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" id="slide-5">
       <div class="slide-inner video-layout">
         <div>
-          <p class="kicker">03 / Live demo</p>
-          <h2>Watch apps become a network.</h2>
-          <p class="lead">첫 번째 데모는 앱투앱 실행.<br />두 번째 데모는 그 다음 증명 흐름.</p>
-          <p class="sub">말이 아니라 화면으로 보인다. 앱이 호출하고, 지갑이 움직이고, receipt가 남고, proof가 이어진다.</p>
+          <p class="kicker">05 / Demo</p>
+          <h2>It runs.</h2>
+          <p class="lead">Signed app-to-app call. Policy-bound payment. Receipt.</p>
           <div class="demo-note">
-            <span>Demo 1: app-to-app request path</span>
-            <span>Demo 2: payment and proof path</span>
+            <span>Demo 1: signed app-to-app request</span>
+            <span>Demo 2: policy-bound payment receipt</span>
           </div>
         </div>
 
@@ -1126,25 +1433,24 @@
           <div class="video-card secondary">
             <div class="video-label">
               <span>Demo 2</span>
-              <b>Proof</b>
+              <b>Receipt</b>
             </div>
             <video class="demo-video" src="assets/demo-after-payment.mp4" controls playsinline preload="metadata"></video>
           </div>
         </div>
       </div>
-      <div class="source">Demo footage: local iOS replay · App-to-App request, then payment proof</div>
     </section>
 
-    <section class="slide" id="slide-4">
+    <section class="slide" id="slide-6">
       <div class="image-layout">
         <div>
-          <p class="kicker">04 / Live trust graph</p>
-          <h2>The receipt is visible.</h2>
-          <p class="lead">Request, payment, receipt.<br />한 화면에서 이어진다.</p>
-          <p class="sub">maroo testnet RPC에서 읽은 txHash와 receipt status를 그래프로 보여준다. 데모의 핵심은 단순 결제가 아니라, 요청이 결제와 영수증으로 검증된다는 점이다.</p>
+          <p class="kicker">06 / Receipt graph</p>
+          <h2>Inclusion lives in the log.</h2>
+          <p class="lead"><span class="nb">requestHash</span> &rarr; <span class="nb">policyHash</span> &rarr; <span class="nb">txHash</span> &rarr; <span class="nb">receiptId</span></p>
+          <p class="sub">Missing link, unverifiable action.</p>
           <div class="demo-note">
-            <span>Live RPC scan: maroo-testnet</span>
-            <span>Verified path: request to payment to receipt</span>
+            <span>Live RPC scan: maroo testnet</span>
+            <span>Merkle-style path: request to policy to payment to receipt</span>
           </div>
         </div>
 
@@ -1152,273 +1458,194 @@
           <img src="assets/trust-path-live.png" alt="Trust Path live RPC graph showing request, payment, receipt, and verified status">
         </div>
       </div>
-      <div class="source">Trust Path visualizer: live maroo testnet RPC · public receipt explanation</div>
-    </section>
-
-    <section class="slide" id="slide-5">
-      <div class="slide-inner">
-        <div>
-          <p class="kicker">05 / maroo demo</p>
-          <h2>Verifiable calls. OKRW payments. Agent wallets.</h2>
-          <p class="lead">MeshKit은 호출한다.<br />maroo는 증명한다.</p>
-          <p class="sub">커머스 앱이 지갑을 부른다. 노트 앱이 기록한다. OKRW 결제, 정책 차단, signed receipt가 하나의 proof가 된다.</p>
-
-          <div class="maroo-stack">
-            <div class="stack-item">
-              <strong>App call graph</strong>
-              <span>앱이 caller/callee로 움직이는 호출 그래프를 검증</span>
-            </div>
-            <div class="stack-item">
-              <strong>OKRW payment</strong>
-              <span>원화 스테이블 테스트 토큰으로 결제와 송금까지 연결</span>
-            </div>
-            <div class="stack-item">
-              <strong>Agent Wallet Kit</strong>
-              <span>에이전트 지갑과 정책 기반 차단을 MCP 호출에 결합</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="api-board" aria-label="maroo demo loop">
-          <div class="api-card">
-            <b>1. Discover</b>
-            <div>
-              <code>Local app discovery</code>
-              <span>로컬에서 호출할 앱과 MCP capability를 찾는다</span>
-            </div>
-          </div>
-          <div class="api-card">
-            <b>2. Call</b>
-            <div>
-              <code>App as caller</code>
-              <span>커머스, 노트, 지갑 앱이 서로의 MCP business logic을 호출한다</span>
-            </div>
-          </div>
-          <div class="api-card">
-            <b>3. Consent</b>
-            <div>
-              <code>Target app boundary</code>
-              <span>동의와 실행은 중앙 슈퍼앱이 아니라 타깃 앱 안에서 처리한다</span>
-            </div>
-          </div>
-          <div class="api-card">
-            <b>4. Pay</b>
-            <div>
-              <code>OKRW + Agent Wallet</code>
-              <span>정책 한도, 허용 주소, Mock KYC로 송금 전 차단까지 시연한다</span>
-            </div>
-          </div>
-          <div class="api-card">
-            <b>5. Verify</b>
-            <div>
-              <code>Receipt hash + Indexer</code>
-              <span>결과 receipt와 결제 상태를 누구나 확인할 수 있게 연결한다</span>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="source">Docs: <a href="https://docs.maroo.io">docs.maroo.io</a> · Agent: <a href="https://agent.maroo.io">agent.maroo.io</a></div>
-    </section>
-
-    <section class="slide" id="slide-6">
-      <div class="slide-inner">
-        <div>
-          <p class="kicker">06 / Trust architecture</p>
-          <h2>Gasless app paths, on-chain settlement.</h2>
-          <p class="lead">모든 클릭을 체인에 쓰지 않는다.<br />돈이 움직일 때만 온체인으로 간다.</p>
-          <p class="sub">앱 이동과 메모는 off-chain receipt. 주문과 OKRW 결제는 maroo txHash. 둘은 하나의 graph로 묶인다.</p>
-
-          <div class="decision-grid">
-            <div class="decision">
-              <strong>Memo save: off-chain</strong>
-              <span>노트 저장, 앱 이동, 권한 확인은 signed request와 receipt로 빠르게 남긴다.</span>
-            </div>
-            <div class="decision">
-              <strong>Order: on-chain</strong>
-              <span>OKRW 결제, 정산, 송금 proof가 필요한 주문은 maroo txHash와 receipt에 연결한다.</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="hybrid-map" aria-label="off-chain and on-chain trust paths">
-          <div class="lane">
-            <div class="lane-head">
-              <strong>Off-chain app path</strong>
-              <span>SDK permission, capability routing, signed receipt</span>
-            </div>
-            <div class="lane-nodes">
-              <div class="lane-node">
-                <b>Caller App</b>
-                <small>requestHash</small>
-              </div>
-              <div class="lane-node">
-                <b>Capability</b>
-                <small>memo.write</small>
-              </div>
-              <div class="lane-node">
-                <b>Receipt Log</b>
-                <small>receiptId</small>
-              </div>
-            </div>
-          </div>
-
-          <div class="link-strip">
-            <strong>Correlation key for the visual graph</strong>
-            <code>requestHash + receiptId + optional txHash</code>
-          </div>
-
-          <div class="lane">
-            <div class="lane-head">
-              <strong>On-chain payment path</strong>
-              <span>OKRW transfer, maroo receipt, explorer proof</span>
-            </div>
-            <div class="lane-nodes">
-              <div class="lane-node">
-                <b>Order App</b>
-                <small>checkout</small>
-              </div>
-              <div class="lane-node">
-                <b>Wallet</b>
-                <small>policy check</small>
-              </div>
-              <div class="lane-node">
-                <b>maroo Tx</b>
-                <small>txHash</small>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="source">Rule: app behavior stays gasless; payment settlement becomes on-chain proof</div>
     </section>
 
     <section class="slide manifesto" id="slide-7">
       <div class="manifesto-inner">
         <div>
-          <p class="kicker">07 / Independence</p>
-          <h2>We refuse the next OS empire.</h2>
-          <p class="oath">작은 앱도 workflow를 가져야 한다.<br />거대 OS의 허락 없이.</p>
-          <p class="oath-copy">MeshKit은 앱을 플러그인이 아니라 실행 주체로 만든다. 모든 앱이 caller가 되고, callee가 된다.</p>
+          <p class="kicker">07 / Security + rails</p>
+          <h2>Security is local. Inclusion is public.</h2>
+          <p class="oath">Low gas keeps the public log alive.</p>
+          <p class="oath-copy">Stablecoin rails can pay tiny fees to anchor receipt roots on-chain.</p>
         </div>
 
-        <div class="proof-panel" aria-label="independent app workflow proof">
+        <div class="proof-panel" aria-label="MeshKit security and settlement model">
           <div class="proof-title">
-            <span>Declaration</span>
-            <b>App-to-App Proof</b>
+            <span>Fail-Closed Boundary</span>
+            <b>Rail-neutral receipts</b>
           </div>
           <div class="signal-list">
             <div class="signal">
               <i></i>
               <div>
-                <strong>No platform gatekeeper</strong>
-                <span>workflow는 특정 OS assistant의 독점 API가 아니다. 앱 사이의 공개 capability로 구성된다.</span>
+                <strong>Target owns execution</strong>
+                <span>The app verifies the call before it acts.</span>
               </div>
             </div>
             <div class="signal">
               <i></i>
               <div>
-                <strong>Small apps become programmable</strong>
-                <span>예약, 메모, 주문, 지갑 같은 작은 앱이 호출 가능한 business logic을 직접 공개한다.</span>
+                <strong>Wallet enforces policy</strong>
+                <span>Money moves only inside the user grant.</span>
               </div>
             </div>
             <div class="signal">
               <i></i>
               <div>
-                <strong>Workflow belongs to builders</strong>
-                <span>빌더는 슈퍼앱을 기다리지 않는다. 앱들을 묶어 실제 작업 흐름을 만든다.</span>
+                <strong>Stablecoin rail pays gas</strong>
+                <span>The fee maintains receipt-root anchoring.</span>
+              </div>
+            </div>
+            <div class="signal">
+              <i></i>
+              <div>
+                <strong>Chain proves inclusion</strong>
+                <span>Append-only roots and public checks.</span>
               </div>
             </div>
           </div>
-          <div class="seal">Not<br>another<br>lock-in</div>
+          <div class="seal">Fail<br>closed<br>by design</div>
         </div>
       </div>
-      <div class="source">Vision: every app deserves a workflow, not only apps inside platform empires</div>
     </section>
 
-    <section class="slide manifesto" id="slide-8">
-      <div class="manifesto-inner">
-        <div>
-          <p class="kicker">08 / Security proof</p>
-          <h2>Transparency becomes a witness.</h2>
-          <p class="oath">요청은 말이 아니다.<br />검증 가능한 기록이다.</p>
-          <p class="oath-copy">Domain Root CA의 transparency log처럼, signed request와 receipt를 남긴다. 결제는 maroo txHash로 공개 증명한다.</p>
+    <section class="slide" id="slide-8">
+      <div class="milestone-layout">
+        <div class="milestone-copy">
+          <p class="kicker">08 / Seed milestone</p>
+          <h2>Launch the first public call graph.</h2>
+          <p class="lead">One runtime. One wallet. Three apps. One rail.</p>
+          <p class="sub">The seed target is a working network, not a paper standard.</p>
         </div>
 
-        <div class="proof-panel dark" aria-label="blockchain transparency log proof">
-          <div class="proof-title">
-            <span>Audit Log</span>
-            <b>Request Validity</b>
+        <div class="rail-stage" aria-label="MeshKit seed milestone rail">
+          <div class="rail-track">
+            <div class="rail-step">
+              <div class="rail-marker">1</div>
+              <div class="rail-body">
+                <strong>Agent runtime</strong>
+                <span>Calls published app actions.</span>
+              </div>
+            </div>
+            <div class="rail-step">
+              <div class="rail-marker">2</div>
+              <div class="rail-body">
+                <strong>Wallet policy engine</strong>
+                <span>Enforces user-granted scope, budget, and expiry.</span>
+              </div>
+            </div>
+            <div class="rail-step">
+              <div class="rail-marker">3</div>
+              <div class="rail-body">
+                <strong>3 callable apps</strong>
+                <span>Proves caller/callee workflows beyond one demo.</span>
+              </div>
+            </div>
+            <div class="rail-step">
+              <div class="rail-marker">4</div>
+              <div class="rail-body">
+                <strong>Settlement rail</strong>
+                <span>Anchors receipt roots with tiny stablecoin gas fees.</span>
+              </div>
+            </div>
+            <div class="rail-step">
+              <div class="rail-marker">5</div>
+              <div class="rail-body">
+                <strong>Explorer + spec v0</strong>
+                <span>Public receipt explorer and conformance tests.</span>
+              </div>
+            </div>
           </div>
-          <div class="signal-list">
-            <div class="signal">
-              <i></i>
-              <div>
-                <strong>Signed request</strong>
-                <span>caller, callee, capability, timestamp, nonce에 서명해 요청 위조를 막는다.</span>
-              </div>
-            </div>
-            <div class="signal">
-              <i></i>
-              <div>
-                <strong>Receipt validation</strong>
-                <span>실행 결과는 receipt로 남긴다. requestHash와 연결해 사후 부인을 어렵게 만든다.</span>
-              </div>
-            </div>
-            <div class="signal">
-              <i></i>
-              <div>
-                <strong>Public chain proof</strong>
-                <span>결제가 포함된 요청은 maroo txHash로 검증한다. 누구나 공개 감사할 수 있다.</span>
-              </div>
-            </div>
-          </div>
-          <div class="seal">Public<br>proof<br>layer</div>
         </div>
       </div>
-      <div class="source">Security model: signed request log + receipt validation + optional public on-chain anchor</div>
     </section>
 
-    <section class="slide manifesto" id="slide-9">
-      <div class="manifesto-inner">
-        <div>
-          <p class="kicker">09 / Builder sovereignty</p>
-          <h2>Gas is a choice, not a tax on every click.</h2>
-          <p class="oath">Gas는 세금이 아니다.<br />빌더가 선택하는 보안 레벨이다.</p>
-          <p class="oath-copy">기본은 off-chain. 정산과 결제만 on-chain. UX와 비용을 빌더가 직접 통제한다.</p>
+    <section class="slide" id="slide-9">
+      <div class="founder-layout">
+        <div class="portrait-frame">
+          <img src="assets/founder-presenting.jpeg" alt="JaeGyu Lee presenting">
+          <div class="portrait-caption">
+            <span>Founder</span>
+            <b>JaeGyu Lee</b>
+          </div>
         </div>
 
-        <div class="proof-panel" aria-label="builder controlled gas model">
+        <div class="founder-copy">
+          <p class="kicker">09 / Founder</p>
+          <h2>Founder-built, protocol-first.</h2>
+          <p class="lead">Built Ouroboros, a 4k+ open-source Agent OS.</p>
+          <p class="sub">A hands-on AI-native engineer who has shipped production systems from realtime infra to company-wide AI orchestration.</p>
+
+          <div class="founder-proof-list">
+            <div class="founder-proof">
+              <strong>Q00/ouroboros</strong>
+              <span>Open-source Agent OS with 4k+ stars.</span>
+            </div>
+            <div class="founder-proof">
+              <strong>0 to $6M ARR</strong>
+              <span>Scaled PODO within 12 months as Tech Lead.</span>
+            </div>
+            <div class="founder-proof">
+              <strong>ZEP AI orchestration</strong>
+              <span>Built Zeude, increasing AI adoption from 6% to 18%.</span>
+            </div>
+            <div class="founder-proof">
+              <strong>AI + realtime</strong>
+              <span>Chrome Built-in AI Challenge winner, WebRTC speaker, Gemini Nano project builder.</span>
+            </div>
+            <div class="founder-proof">
+              <strong>Infra depth</strong>
+              <span>Go, WebRTC, Kafka, gRPC, MSA, AWS, distributed transaction research.</span>
+            </div>
+            <div class="founder-proof">
+              <strong>Community</strong>
+              <span>GDG Golang Korea organizer, GopherCon and DevFest speaker.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide manifesto" id="slide-10">
+      <div class="manifesto-inner">
+        <div>
+          <p class="kicker">10 / Call to movement</p>
+          <h2>The next OS belongs to the call graph.</h2>
+          <p class="oath">Publish one action. Get one receipt. Join the call graph.</p>
+          <p class="oath-copy">Do not build another assistant integration. Ship a callable app.</p>
+        </div>
+
+        <div class="proof-panel dark" aria-label="MeshKit movement call">
           <div class="proof-title">
-            <span>Execution Policy</span>
-            <b>Builder decides</b>
+            <span>Open Surface</span>
+            <b>Publish the call graph</b>
           </div>
           <div class="signal-list">
             <div class="signal">
               <i></i>
               <div>
-                <strong>Off-chain by default</strong>
-                <span>앱 이동, 메모 저장, 권한 체크는 빠르고 저렴한 signed request path로 처리한다.</span>
+                <strong>For app builders</strong>
+                <span>Ship one signed action.</span>
               </div>
             </div>
             <div class="signal">
               <i></i>
               <div>
-                <strong>On-chain when money moves</strong>
-                <span>OKRW 결제, 주문 정산, 송금 proof는 maroo transaction으로 검증한다.</span>
+                <strong>For wallet teams</strong>
+                <span>Enforce policy before spend.</span>
               </div>
             </div>
             <div class="signal">
               <i></i>
               <div>
-                <strong>Cost stays under control</strong>
-                <span>빌더가 UX, 보안, 비용의 경계를 직접 정한다. 그래서 gas 비용을 줄인다.</span>
+                <strong>For rails and chains</strong>
+                <span>Attach settlement to intent.</span>
               </div>
             </div>
           </div>
-          <div class="seal">Use<br>chain<br>with intent</div>
+          <div class="seal">Publish<br>the<br>graph</div>
         </div>
       </div>
-      <div class="source">Principle: off-chain for interaction, on-chain for settlement and public proof</div>
     </section>
   </main>
 </body>
