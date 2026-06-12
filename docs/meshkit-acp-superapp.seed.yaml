@@ -1,0 +1,180 @@
+goal: Build a local single-user MeshKit superapp with web UI and HTTP API that performs
+  ACP app-to-app MCP discovery, brain-inspired preference memory, paid on-chain-sim
+  routing, unpaid off-chain routing, and on-chain settlement ledger display
+task_type: code
+brownfield_context:
+  project_type: greenfield
+  context_references: []
+  existing_patterns: []
+  existing_dependencies: []
+constraints:
+  - Must be based on the existing MeshKit codebase
+  - User-facing surface must include local web UI and local HTTP API/server
+  - CLI-only MVP is not acceptable
+  - Cloud sync is a non-goal
+  - Authentication is a non-goal
+  - Production deployment is a non-goal
+  - Paid external services are a non-goal
+  - Persistence must use repo-local JSON-compatible files
+  - Tests must support isolated fixture/data dir reset via env var
+  - SQLite/queryable DB is a non-goal
+  - On-chain behavior must be deterministic maroo-testnet/onchain-sim, not real network transactions
+  - Memory should be inspired by ~/zep/brain but does not need binary-compatible schema/API
+  - Canonical preference fixture keys are payment_proof_policy and privacy_policy
+acceptance_criteria:
+  - GET /api/acp/apps returns HermesChat, MintNotes, DailyMart with ACP metadata, capabilities, and app-to-app MCP transport
+  - POST /api/preferences stores brain-inspired JSON memory with stable memoryId, userId, agentId, key, value/content, source, importance, timestamps, and promotedAt
+  - GET /api/preferences?query=... retrieves matching stored preference memory
+  - Preference memory stores and retrieves payment_proof_policy for on-chain OKRW proof and privacy_policy for off-chain private payload fields
+  - POST /api/execute records DailyMart grocery.purchase_essentials amount 42 OKRW as maroo-testnet/onchain-sim on-chain payment
+  - POST /api/execute records MintNotes notes.append_note amount 0 as off-chain app-to-app-url-scheme record
+  - GET /api/settlements returns only confirmed/verified/trusted on-chain settlement entries and excludes off-chain records
+  - Settlement total includes only confirmed/verified/trusted on-chain entries
+  - GET /api/superapp-state returns combined discovery, memory, execution, and settlement state
+  - First web UI screen visibly shows Discovery, Memory, Route/Execution, and Ledger results
+  - Invalid API input fails with non-zero/error status
+  - Deterministic tests can reset fixture data and reproduce registry, memory, payment, and ledger outputs
+ontology_schema:
+  name: MeshKitSuperappMVP
+  description: Local MeshKit superapp domain model covering ACP app discovery, brain-inspired durable preference memory, execution/payment routing, and on-chain settlement ledger state
+  fields:
+    - name: appId
+      type: string
+      description: Discovered app identifier such as HermesChat, MintNotes, or DailyMart
+      required: true
+    - name: appName
+      type: string
+      description: Human-readable app name
+      required: true
+    - name: acpMetadata
+      type: object
+      description: ACP metadata and capabilities for app-to-app MCP discovery
+      required: true
+    - name: mcpTransport
+      type: string
+      description: App-to-app MCP transport or URL scheme
+      required: true
+    - name: userId
+      type: string
+      description: Local single user identifier
+      required: true
+    - name: agentId
+      type: string
+      description: Agent identifier storing or using memory
+      required: true
+    - name: memoryId
+      type: string
+      description: Stable identifier for a stored preference memory
+      required: true
+    - name: key
+      type: string
+      description: Preference or memory key
+      required: true
+    - name: value
+      type: string
+      description: Preference value or memory content
+      required: true
+    - name: source
+      type: string
+      description: Source or provenance metadata for memory
+      required: true
+    - name: importance
+      type: number
+      description: Memory importance score
+      required: true
+    - name: retrievalScore
+      type: number
+      description: Memory retrieval score
+      required: true
+    - name: createdAt
+      type: string
+      description: Memory or record creation timestamp
+      required: true
+    - name: updatedAt
+      type: string
+      description: Memory update timestamp
+      required: true
+    - name: lastAccessedAt
+      type: string
+      description: Memory last access timestamp
+      required: true
+    - name: promotedAt
+      type: string
+      description: Long-term memory promotion timestamp
+      required: true
+    - name: action
+      type: string
+      description: Capability or app action being executed
+      required: true
+    - name: paid
+      type: boolean
+      description: Whether execution requires on-chain payment routing
+      required: true
+    - name: amount
+      type: number
+      description: Execution amount in OKRW
+      required: true
+    - name: currency
+      type: string
+      description: Payment currency such as OKRW
+      required: true
+    - name: routeType
+      type: string
+      description: on-chain-sim or off-chain route classification
+      required: true
+    - name: network
+      type: string
+      description: Deterministic network label such as maroo-testnet/onchain-sim
+      required: true
+    - name: txId
+      type: string
+      description: Deterministic simulated transaction id
+      required: true
+    - name: status
+      type: string
+      description: Settlement status such as confirmed, verified, or trusted
+      required: true
+    - name: ledgerTotal
+      type: number
+      description: Total of included on-chain settlement entries
+      required: true
+evaluation_principles:
+  - name: ObservableBehavior
+    description: API endpoints and UI must expose stable visible outputs for every accepted requirement
+    weight: 0.3
+  - name: Determinism
+    description: Fixtures, data reset, tx ids, and ledger totals must be reproducible in tests
+    weight: 0.25
+  - name: ScopeDiscipline
+    description: Implementation must stay local web UI/API with JSON-compatible persistence and avoid cloud/auth/production/real-chain expansion
+    weight: 0.2
+  - name: ExistingPatternFit
+    description: Implementation should follow the current MeshKit codebase patterns and reuse existing local UI/API structure
+    weight: 0.15
+  - name: MemoryFidelity
+    description: Preference memory should reflect brain-inspired filtering, working memory, promotion, importance, scoring, and provenance concepts
+    weight: 0.1
+exit_conditions:
+  - name: AcceptanceTestsPass
+    description: Workflow terminates when deterministic API/UI tests pass for discovery, memory, execution routing, and settlement ledger
+    criteria: All listed acceptance criteria pass
+  - name: InvalidInputVerified
+    description: Workflow terminates only after invalid API inputs return explicit errors
+    criteria: Negative-path tests pass
+  - name: ReproducibleArtifactsVerified
+    description: Workflow terminates only after fixture reset and repo-local JSON persistence reproduce the same state
+    criteria: Repeated test run produces stable outputs
+  - name: NonGoalsPreserved
+    description: Workflow terminates only if cloud sync, auth, production deployment, SQLite, paid services, and real chain transactions remain excluded
+    criteria: No non-goal implementation is required or introduced
+metadata:
+  seed_id: seed_a71e0827cbd6
+  version: 1.0.0
+  created_at: "2026-06-08T15:43:06.264912Z"
+  ambiguity_score: 0.08
+  interview_id: interview_6129e0ad9c8b4737
+  parent_seed_id: null
+  generation_mode: normal
+  degraded: false
+  unresolved_slots: []
+  recovery_reason: null

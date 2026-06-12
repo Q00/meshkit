@@ -6608,6 +6608,29 @@ final class MeshKitTests: XCTestCase {
         XCTAssertEqual(capability?.inputSchema, ["note_ref", "text"])
     }
 
+    func testSampleGraphProjectsACPDiscoveryDescriptors() {
+        let mintNotes = OpenCapabilityGraph.mintNotesSample.acpRegistryDescriptors().first
+        XCTAssertEqual(mintNotes?.schemaVersion, "meshkit-acp-superapp/v1")
+        XCTAssertEqual(mintNotes?.appId, "app.mint-notes")
+        XCTAssertEqual(mintNotes?.ocgAppId, "ai.meshkit.sample.notes")
+        XCTAssertEqual(mintNotes?.acpEndpoint, "acp://mint-notes/apps")
+        XCTAssertEqual(mintNotes?.mcpTransport, "app-to-app-url-scheme")
+        XCTAssertEqual(mintNotes?.platform, "ios-demo")
+        XCTAssertEqual(mintNotes?.registrySource, "meshkit-ios-sample")
+        XCTAssertEqual(mintNotes?.capabilities.first?.routingHint, "offchain_app_call")
+        XCTAssertEqual(mintNotes?.capabilities.first?.requiresPayment, false)
+        XCTAssertNil(mintNotes?.capabilities.first?.asset)
+
+        let dailyMart = OpenCapabilityGraph.dailyMartSample.acpRegistryDescriptors().first
+        XCTAssertEqual(dailyMart?.appId, "app.dailymart")
+        XCTAssertEqual(dailyMart?.ocgAppId, "ai.meshkit.sample.dailymart")
+        XCTAssertEqual(dailyMart?.acpEndpoint, "acp://dailymart/apps")
+        XCTAssertEqual(dailyMart?.capabilities.first?.id, "grocery.purchase_essentials")
+        XCTAssertEqual(dailyMart?.capabilities.first?.routingHint, "onchain_payment")
+        XCTAssertEqual(dailyMart?.capabilities.first?.requiresPayment, true)
+        XCTAssertEqual(dailyMart?.capabilities.first?.asset, "OKRW")
+    }
+
     func testMeshRequestCarriesPayloadHashAndRoundTripsThroughURLScheme() throws {
         let request = sampleRequest(nonce: "nonce-roundtrip")
         XCTAssertEqual(request.payloadHash.algorithm, "sha256")

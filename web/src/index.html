@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MeshKit ACP Superapp</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <main class="app-shell">
+    <aside class="sidebar">
+      <div class="brand-block">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <div>
+          <p class="eyebrow">MeshKit ACP</p>
+          <h1>Superapp</h1>
+        </div>
+      </div>
+
+      <section class="discovery-panel" aria-labelledby="discovery-title">
+        <div class="section-title">
+          <h2 id="discovery-title">Discovered Apps</h2>
+          <span id="app-count">0</span>
+        </div>
+        <div id="discovered-apps" class="stack-list"></div>
+      </section>
+
+      <section class="connect-panel" aria-labelledby="connect-title">
+        <h2 id="connect-title">On-chain Wallet</h2>
+        <label for="wallet-input">Account identifier</label>
+        <div class="wallet-row">
+          <input id="wallet-input" autocomplete="off" spellcheck="false" value="0x6cf5D9C10AA00a96E55A0819A162e02c96DE3C4D">
+          <button id="connect-button" type="button">Connect</button>
+        </div>
+        <p id="connection-status" class="status-text">Disconnected</p>
+      </section>
+
+      <section class="network-panel" aria-labelledby="network-title">
+        <h2 id="network-title">Network</h2>
+        <dl>
+          <div><dt>Provider</dt><dd>maroo</dd></div>
+          <div><dt>Network</dt><dd>maroo-testnet</dd></div>
+          <div><dt>RPC</dt><dd>rpc-testnet.maroo.io</dd></div>
+          <div><dt>Polling</dt><dd>2 seconds</dd></div>
+        </dl>
+      </section>
+
+      <section class="records-panel" aria-labelledby="records-title">
+        <div class="section-title">
+          <h2 id="records-title">Live Chain Paths</h2>
+          <span id="record-count">0</span>
+        </div>
+        <div id="record-list" class="record-list"></div>
+      </section>
+    </aside>
+
+    <section class="workspace">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Agent cockpit</p>
+          <h2 id="workspace-title">ACP superapp is ready: discovered apps, memory, routing, and settlement are available.</h2>
+        </div>
+        <div class="live-cluster">
+          <span id="live-dot" class="live-dot" aria-hidden="true"></span>
+          <span id="live-label">Idle</span>
+        </div>
+      </header>
+
+      <section class="source-strip" aria-label="maroo-testnet source">
+        <div><span>Source</span><b id="source-mode">Waiting for connection</b></div>
+        <div><span>Latest block</span><b id="latest-block">-</b></div>
+        <div><span>net_version</span><b id="net-version">-</b></div>
+      </section>
+
+      <section class="superapp-grid" aria-label="Superapp control plane">
+        <article class="detail-card">
+          <div class="section-title compact">
+            <h3>Preference Memory</h3>
+            <span>brain</span>
+          </div>
+          <form id="preference-form" class="control-form">
+            <label for="preference-key">Key</label>
+            <input id="preference-key" autocomplete="off" value="payment_proof_policy">
+            <label for="preference-value">Value</label>
+            <input id="preference-value" autocomplete="off" value="agent payments use on-chain OKRW proof and non-payment calls stay off-chain">
+            <button id="save-preference-button" type="submit">Save Preference</button>
+          </form>
+          <div id="memory-list" class="stack-list"></div>
+        </article>
+        <article class="detail-card">
+          <div class="section-title compact">
+            <h3>Execution Routing</h3>
+            <span>ACP</span>
+          </div>
+          <div class="action-row" role="group" aria-label="Agent execution actions">
+            <button id="execute-unpaid-button" type="button">MintNotes Off-chain</button>
+            <button id="execute-paid-button" type="button">DailyMart 42 OKRW</button>
+          </div>
+          <p id="action-status" class="action-status">Ready</p>
+          <div id="route-list" class="stack-list"></div>
+          <div id="execution-list" class="stack-list execution-list"></div>
+        </article>
+        <article class="detail-card">
+          <div class="section-title compact">
+            <h3>Settlement Ledger</h3>
+            <span id="settlement-total">0 OKRW</span>
+          </div>
+          <div id="settlement-summary" class="settlement-summary"></div>
+          <div id="settlement-list" class="stack-list"></div>
+        </article>
+      </section>
+
+      <section class="graph-stage" aria-label="Trust-path graph">
+        <div id="empty-state" class="empty-state">
+          <strong>No live chain path selected</strong>
+          <span>The settlement ledger still shows deterministic demo entries until a wallet scan returns verified records.</span>
+        </div>
+        <svg id="edge-layer" class="edge-layer" aria-hidden="true"></svg>
+        <div id="graph-layer" class="graph-layer"></div>
+      </section>
+
+      <section class="details-grid">
+        <article class="detail-card">
+          <h3>Selected Proof</h3>
+          <div id="proof-details" class="proof-details muted-block">No selected record.</div>
+        </article>
+        <article class="detail-card">
+          <h3>Privacy Boundary</h3>
+          <p>Payment proof is on-chain. Non-payment MCP calls, preference facts, cart contents, delivery address references, user identity details, and consent text remain off-chain.</p>
+        </article>
+      </section>
+    </section>
+  </main>
+
+  <script type="module" src="/main.js"></script>
+</body>
+</html>

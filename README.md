@@ -38,7 +38,15 @@ meshkit-ios/Tests/            Trust-layer unit tests
 meshkit-ios/Samples/iOSDemo/  HermesChat, MintNotes, and DailyMart app-to-app demo
 ocg/registry/                 Sample OCG manifests
 scripts/                      iOS verification and physical-device install scripts
+web/                          Local ACP superapp cockpit and maroo trust-path viewer
+server-go/                    Go reference server for the ACP superapp API
 ```
+
+The local ACP superapp protocol is documented in
+`docs/meshkit-acp-superapp-protocol.md`; the generated Seed acceptance artifact
+is checked in as `docs/meshkit-acp-superapp.seed.yaml`.
+The Swift SDK projects sample OCG entries into the same ACP discovery surface via
+`OpenCapabilityGraph.acpRegistryDescriptors()`.
 
 ## iPad install
 
@@ -62,6 +70,18 @@ The DailyMart demo budget is intentionally set to **₩100** for a visibly const
 swift test --package-path meshkit-ios
 python3 scripts/verify_ios_scaffold.py
 python3 scripts/verify_ios_demo_apps.py
+```
+
+For the local ACP superapp:
+
+```bash
+cd server-go
+go test ./...
+go test -race ./...
+MESHKIT_SUPERAPP_DATA_DIR="$(mktemp -d)" PORT=4173 go run .
+
+cd web
+npm test
 ```
 
 For simulator runtime proof:
