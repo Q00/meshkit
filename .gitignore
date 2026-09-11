@@ -2,6 +2,8 @@
 .build/
 .swiftpm/
 build/
+.gradle/
+local.properties
 DerivedData/
 *.xcuserstate
 xcuserdata/
@@ -12,3 +14,4 @@ web/.meshkit-data/
 .env*.local
 *.wallet.env
 *.log
+.ouroboros/

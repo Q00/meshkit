@@ -72,6 +72,59 @@ function selectRecord(recordId) {
   render();
 }
 
+// Build a valid demo trust-path from the deterministic settlement so the dark
+// gallery's artifact glows on first load. A live wallet poll overwrites this.
+function buildDemoTrustPath(state, wallet) {
+  const entry = state?.settlementLedger?.entries?.find((item) => item.txHash) || null;
+  if (!entry) return null;
+  const txHash = entry.txHash;
+  const signedRequestHash = entry.signedRequestHash || `signed-${entry.requestId}`;
+  const policyHash = entry.policyHash || `policy-${entry.appId}`;
+  const receiptId = `rcpt-${entry.requestId}`;
+  const amountLabel = `${Number(entry.amount || 0)} ${entry.asset || "OKRW"}`;
+  return {
+    provider: "maroo",
+    network: "maroo-testnet",
+    chainId: "maroo-testnet-1",
+    walletAccount: wallet,
+    requestId: entry.requestId,
+    txHash,
+    receiptId,
+    receiptStatus: "verified",
+    proofStatus: "trusted_path_complete",
+    lifecycleState: "receipt_verified",
+    isComplete: true,
+    graphNodes: [
+      { id: "n-request", type: "request", label: "Signed MCP request", primaryValue: compact(signedRequestHash) },
+      { id: "n-payment", type: "payment", label: entry.counterparty || "OKRW settlement", primaryValue: amountLabel },
+      { id: "n-receipt", type: "receipt", label: "Settlement receipt", primaryValue: receiptId },
+      { id: "n-status", type: "status", label: "Verified on-chain", primaryValue: "trusted path complete" }
+    ],
+    graphEdges: [
+      { id: "e1", type: "request_to_payment", source: "n-request", target: "n-payment" },
+      { id: "e2", type: "payment_to_receipt", source: "n-payment", target: "n-receipt" },
+      { id: "e3", type: "receipt_to_status", source: "n-receipt", target: "n-status" }
+    ],
+    proofDetails: {
+      signedRequestHash,
+      policyHash,
+      anchoringReference: entry.explorerUrl || `maroo-testnet tx ${compact(txHash)}`,
+      explorerUrl: entry.explorerUrl || "",
+      receiptSigningKeyId: "maroo-receipt-signer-demo",
+      verifierIdentity: "meshkit-superapp-verifier",
+      value: Number(entry.amount || 0)
+    }
+  };
+}
+
+function seedDemoTrustPathIfIdle() {
+  if (connectedWallet || records.length) return;
+  const wallet = (elements.walletInput?.value || "").trim() || "local-account";
+  const demo = buildDemoTrustPath(superappState, wallet);
+  records = demo ? [demo] : [];
+  selectedRecordId = records[0]?.requestId || "";
+}
+
 function renderDiscovery() {
   elements.appCount.textContent = String(superappState.apps.length);
   elements.discoveredApps.innerHTML = superappState.apps.map((app) => `
@@ -171,10 +224,10 @@ function renderRecordList() {
 
 function nodePosition(type) {
   return {
-    request: { left: 14, top: 50 },
-    payment: { left: 38, top: 50 },
-    receipt: { left: 62, top: 50 },
-    status: { left: 86, top: 50 }
+    request: { left: 22, top: 22 },
+    payment: { left: 78, top: 37 },
+    receipt: { left: 30, top: 63 },
+    status: { left: 84, top: 78 }
   }[type];
 }
 
@@ -182,14 +235,19 @@ function renderGraph(record) {
   elements.graphLayer.innerHTML = "";
   elements.edgeLayer.innerHTML = "";
   elements.emptyState.hidden = Boolean(record);
-  if (!record) return;
+  if (!record) {
+    lastNodeElements = null;
+    return;
+  }
 
   const nodes = groupRecordNodes(record);
-  const rendered = Object.values(nodes).filter(Boolean);
-  for (const node of rendered) {
-    const position = nodePosition(node.type);
+  const nodeElements = {};
+  for (const type of GRAPH_NODE_ORDER) {
+    const node = nodes[type];
+    if (!node) continue;
+    const position = nodePosition(type);
     const nodeElement = document.createElement("article");
-    nodeElement.className = `graph-node ${node.type}`;
+    nodeElement.className = `graph-node ${type}`;
     nodeElement.style.left = `${position.left}%`;
     nodeElement.style.top = `${position.top}%`;
     nodeElement.innerHTML = `
@@ -198,28 +256,83 @@ function renderGraph(record) {
       <code>${escapeHtml(node.primaryValue)}</code>
     `;
     elements.graphLayer.append(nodeElement);
+    nodeElements[type] = nodeElement;
   }
 
-  const edgeData = [
-    ["request", "payment"],
-    ["payment", "receipt"],
-    ["receipt", "status"]
-  ];
-  const svg = elements.edgeLayer;
+  lastNodeElements = nodeElements;
+  drawTrustEdges(elements.edgeLayer, nodeElements, GRAPH_EDGES);
+}
+
+const SVG_NS = "http://www.w3.org/2000/svg";
+const GRAPH_NODE_ORDER = ["request", "payment", "receipt", "status"];
+const GRAPH_EDGES = [
+  ["request", "payment"],
+  ["payment", "receipt"],
+  ["receipt", "status"]
+];
+let lastNodeElements = null;
+
+function appendEdgePath(svg, d) {
+  const line = document.createElementNS(SVG_NS, "path");
+  line.setAttribute("d", d);
+  line.setAttribute("class", "trust-edge");
+  svg.append(line);
+}
+
+// Exit point on a box border heading toward (dx, dy) from its center.
+function borderPoint(box, dx, dy) {
+  if (dx === 0 && dy === 0) return { x: box.cx, y: box.cy };
+  const tx = dx !== 0 ? box.hw / Math.abs(dx) : Infinity;
+  const ty = dy !== 0 ? box.hh / Math.abs(dy) : Infinity;
+  const t = Math.min(tx, ty);
+  return { x: box.cx + dx * t, y: box.cy + dy * t };
+}
+
+// Draw edges from one card's border to the next card's border. Uses real pixel
+// geometry when the DOM is laid out; falls back to percentage centers (test env).
+function drawTrustEdges(svg, nodeElements, edgeData) {
+  svg.innerHTML = "";
+  const stageRect = svg.getBoundingClientRect && svg.getBoundingClientRect();
+  const measurable = stageRect && stageRect.width > 0 &&
+    Object.values(nodeElements).every((el) => typeof el.getBoundingClientRect === "function");
+
+  if (measurable) {
+    svg.setAttribute("viewBox", `0 0 ${stageRect.width} ${stageRect.height}`);
+    svg.removeAttribute("preserveAspectRatio");
+    const boxes = {};
+    for (const [type, el] of Object.entries(nodeElements)) {
+      const r = el.getBoundingClientRect();
+      boxes[type] = {
+        cx: r.left - stageRect.left + r.width / 2,
+        cy: r.top - stageRect.top + r.height / 2,
+        hw: r.width / 2,
+        hh: r.height / 2
+      };
+    }
+    for (const [source, target] of edgeData) {
+      const a = boxes[source];
+      const b = boxes[target];
+      if (!a || !b) continue;
+      const p1 = borderPoint(a, b.cx - a.cx, b.cy - a.cy);
+      const p2 = borderPoint(b, a.cx - b.cx, a.cy - b.cy);
+      const midX = (p1.x + p2.x) / 2;
+      // Rise scales with segment length so every arc shares one curvature ratio.
+      const rise = Math.max(16, Math.hypot(p2.x - p1.x, p2.y - p1.y) * 0.1);
+      const midY = (p1.y + p2.y) / 2 - rise;
+      appendEdgePath(svg, `M ${p1.x.toFixed(1)} ${p1.y.toFixed(1)} Q ${midX.toFixed(1)} ${midY.toFixed(1)} ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`);
+    }
+    return;
+  }
+
+  // Fallback: percentage centers stretched to the stage box.
   svg.setAttribute("viewBox", "0 0 100 100");
+  svg.setAttribute("preserveAspectRatio", "none");
   for (const [source, target] of edgeData) {
     const start = nodePosition(source);
     const end = nodePosition(target);
-    const line = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    const x1 = start.left + 7;
-    const y1 = start.top + 7;
-    const x2 = end.left + 7;
-    const y2 = end.top + 7;
-    const midX = (x1 + x2) / 2;
-    const midY = Math.min(y1, y2) - 12;
-    line.setAttribute("d", `M ${x1} ${y1} Q ${midX} ${midY} ${x2} ${y2}`);
-    line.setAttribute("class", "trust-edge");
-    svg.append(line);
+    const midX = (start.left + end.left) / 2;
+    const midY = Math.min(start.top, end.top) - 9;
+    appendEdgePath(svg, `M ${start.left} ${start.top} Q ${midX} ${midY} ${end.left} ${end.top}`);
   }
 }
 
@@ -252,9 +365,9 @@ function render() {
   renderRecordList();
   const selected = records.find((record) => record.requestId === selectedRecordId) || records[0];
   selectedRecordId = selected?.requestId || "";
-  elements.workspaceTitle.textContent = selected
-    ? `${selected.requestId} is ${selected.receiptStatus}: on-chain settlement is linked to the signed MCP request.`
-    : "ACP superapp is ready: discovered apps, memory, routing, and settlement are available.";
+  elements.workspaceTitle.textContent = connectedWallet && selected
+    ? `${selected.requestId} verified — settlement linked to the signed request.`
+    : "Ready · everything's connected. Settling on maroo-testnet.";
   renderGraph(selected);
   renderProofDetails(selected);
 }
@@ -313,9 +426,11 @@ async function hydrateSuperappState() {
     const response = await fetch("/api/superapp-state", { cache: "no-store" });
     if (!response.ok) throw new Error(`Superapp API returned HTTP ${response.status}`);
     superappState = await response.json();
+    seedDemoTrustPathIfIdle();
     render();
   } catch (error) {
     elements.connectionStatus.textContent = error instanceof Error ? error.message : String(error);
+    seedDemoTrustPathIfIdle();
     render();
   }
 }
@@ -406,5 +521,14 @@ elements.executePaidButton.addEventListener("click", () => executeCapability({
   amount: 42,
   requestPrefix: "req-dailymart-ui"
 }));
+
+// Keep pixel-space edges anchored to card borders on live viewport resizes
+// that don't cross a CSS breakpoint (nodes reflow via %, edges must follow).
+if (typeof ResizeObserver !== "undefined" && elements.edgeLayer?.parentElement) {
+  const observer = new ResizeObserver(() => {
+    if (lastNodeElements) drawTrustEdges(elements.edgeLayer, lastNodeElements, GRAPH_EDGES);
+  });
+  observer.observe(elements.edgeLayer.parentElement);
+}
 
 void hydrateSuperappState();

@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MeshKit SDK — App-to-App MCP 예시</title>
+  <style>
+    :root {
+      --primary: #0066cc;
+      --primary-focus: #0071e3;
+      --primary-on-dark: #2997ff;
+      --ink: #1d1d1f;
+      --ink-muted-80: #333333;
+      --ink-muted-48: #7a7a7a;
+      --divider-soft: #f0f0f0;
+      --hairline: #e0e0e0;
+      --canvas: #ffffff;
+      --parchment: #f5f5f7;
+      --surface-dark: #1d1d1f;
+      --code-bg: #18181b;
+      --on-dark: #ffffff;
+      --green: #2da44e;
+      --red: #cf222e;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: "SF Pro Text", system-ui, -apple-system, sans-serif;
+      color: var(--ink);
+      background: var(--canvas);
+      line-height: 1.47;
+      letter-spacing: -0.374px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .wrap { max-width: 980px; margin: 0 auto; padding: 0 24px; }
+
+    /* Hero */
+    header.hero {
+      background: var(--parchment);
+      text-align: center;
+      padding: 96px 24px 80px;
+      border-bottom: 1px solid var(--divider-soft);
+    }
+    .eyebrow {
+      font-size: 17px;
+      font-weight: 600;
+      color: var(--primary);
+      letter-spacing: 0;
+      margin-bottom: 12px;
+    }
+    h1 {
+      font-family: "SF Pro Display", system-ui, sans-serif;
+      font-size: 56px;
+      font-weight: 600;
+      line-height: 1.07;
+      letter-spacing: -0.28px;
+    }
+    .hero p.lead {
+      font-family: "SF Pro Display", system-ui, sans-serif;
+      font-size: 24px;
+      font-weight: 300;
+      line-height: 1.4;
+      color: var(--ink-muted-80);
+      max-width: 640px;
+      margin: 20px auto 0;
+    }
+
+    /* Section */
+    section { padding: 72px 0; border-bottom: 1px solid var(--divider-soft); }
+    .step-no {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--primary);
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+    h2 {
+      font-family: "SF Pro Display", system-ui, sans-serif;
+      font-size: 40px;
+      font-weight: 600;
+      line-height: 1.1;
+      margin: 8px 0 16px;
+    }
+    section p.desc {
+      font-size: 19px;
+      color: var(--ink-muted-80);
+      max-width: 680px;
+      margin-bottom: 32px;
+    }
+
+    /* Flow diagram */
+    .flow {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px;
+      background: var(--surface-dark);
+      color: var(--on-dark);
+      border-radius: 18px;
+      padding: 28px 32px;
+      margin-top: 24px;
+    }
+    .flow .node {
+      font-size: 15px;
+      font-weight: 600;
+      padding: 10px 16px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 10px;
+      white-space: nowrap;
+    }
+    .flow .node.accent { color: var(--primary-on-dark); border-color: rgba(41,151,255,0.4); }
+    .flow .arrow { color: var(--ink-muted-48); font-size: 18px; }
+
+    /* Code block */
+    .code {
+      background: var(--code-bg);
+      border-radius: 14px;
+      overflow: hidden;
+      margin-top: 8px;
+      box-shadow: 0 24px 48px -24px rgba(0,0,0,0.4);
+    }
+    .code .bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 18px;
+      background: rgba(255,255,255,0.04);
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+    }
+    .code .bar .dot { width: 12px; height: 12px; border-radius: 50%; }
+    .dot.r { background: #ff5f57; } .dot.y { background: #febc2e; } .dot.g { background: #28c840; }
+    .code .bar .file {
+      margin-left: 8px;
+      font-size: 13px;
+      color: #9a9aa2;
+      font-family: "SF Mono", ui-monospace, Menlo, monospace;
+    }
+    pre {
+      margin: 0;
+      padding: 22px 24px;
+      overflow-x: auto;
+      font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+      font-size: 13.5px;
+      line-height: 1.7;
+      color: #e6e6e9;
+      tab-size: 2;
+    }
+    /* token colors */
+    .kw { color: #ff7b9c; }
+    .ty { color: #6bd6ff; }
+    .st { color: #b9e88a; }
+    .nu { color: #ffb454; }
+    .cm { color: #6b6b78; font-style: italic; }
+    .fn { color: #d6a4ff; }
+    .pr { color: #ffd479; }
+
+    /* fail-closed grid */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 12px;
+      margin-top: 28px;
+    }
+    .reject {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px 18px;
+      background: var(--parchment);
+      border: 1px solid var(--hairline);
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 500;
+    }
+    .reject .x {
+      flex-shrink: 0;
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      background: var(--red);
+      color: #fff;
+      display: grid; place-items: center;
+      font-size: 13px; font-weight: 700;
+    }
+    .reject code { font-family: "SF Mono", ui-monospace, monospace; font-size: 13px; color: var(--ink-muted-80); }
+
+    /* receipt card */
+    .receipt {
+      margin-top: 24px;
+      border: 1px solid var(--hairline);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+    .receipt .head {
+      display: flex; align-items: center; gap: 10px;
+      padding: 16px 20px;
+      background: var(--green);
+      color: #fff;
+      font-weight: 600;
+      font-size: 16px;
+    }
+    .receipt .body { padding: 4px 20px; }
+    .receipt .row {
+      display: flex; justify-content: space-between;
+      padding: 13px 0; border-bottom: 1px solid var(--divider-soft);
+      font-size: 15px;
+    }
+    .receipt .row:last-child { border-bottom: 0; }
+    .receipt .row .k { color: var(--ink-muted-48); }
+    .receipt .row .v { font-family: "SF Mono", ui-monospace, monospace; font-size: 13.5px; }
+
+    footer { text-align: center; padding: 56px 24px; color: var(--ink-muted-48); font-size: 14px; }
+    footer a { color: var(--primary); text-decoration: none; }
+
+    @media (max-width: 640px) {
+      h1 { font-size: 38px; }
+      h2 { font-size: 30px; }
+      .hero p.lead { font-size: 20px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div class="wrap">
+      <div class="eyebrow">MeshKit SDK</div>
+      <h1>App-to-App MCP,<br />네 줄로 안전하게.</h1>
+      <p class="lead">서명된 요청을 보내고, 대상 앱 경계 안에서 실행하고, 서명된 영수증으로 완료를 증명합니다. iOS Swift Package 기준 예시입니다.</p>
+    </div>
+  </header>
+
+  <!-- Step 1: Discovery -->
+  <section>
+    <div class="wrap">
+      <div class="step-no">Step 1 · Discovery</div>
+      <h2>호출 가능한 능력을 찾는다</h2>
+      <p class="desc">Open Calling Graph(OCG)에서 대상 앱이 공개한 capability를 조회합니다. 각 capability는 위험 등급(risk)과 동의 정책(consent)을 함께 선언합니다.</p>
+
+      <div class="flow">
+        <span class="node accent">User / agent intent</span>
+        <span class="arrow">→</span>
+        <span class="node">Caller app</span>
+        <span class="arrow">→</span>
+        <span class="node">OCG discovery</span>
+        <span class="arrow">→</span>
+        <span class="node">Signed A2A request</span>
+        <span class="arrow">→</span>
+        <span class="node accent">Target validate + consent</span>
+        <span class="arrow">→</span>
+        <span class="node">Signed receipt</span>
+      </div>
+
+      <div class="code" style="margin-top:24px">
+        <div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="file">Discovery.swift</span></div>
+        <pre><span class="kw">import</span> <span class="ty">MeshKit</span>
+
+<span class="cm">// 1. 신뢰된 OCG 레지스트리에서 대상 능력을 찾는다</span>
+<span class="kw">let</span> graph = <span class="ty">OpenCapabilityGraph</span>.mintNotesSample
+
+<span class="kw">guard let</span> capability = graph.<span class="fn">findCapability</span>(<span class="st">"notes.append_note"</span>) <span class="kw">else</span> {
+    <span class="kw">throw</span> <span class="ty">DiscoveryError</span>.capabilityNotFound
+}
+
+<span class="fn">print</span>(capability.displayName)  <span class="cm">// "Append Note"</span>
+<span class="fn">print</span>(capability.risk)         <span class="cm">// "write:user_content"</span>
+<span class="fn">print</span>(capability.consent)      <span class="cm">// "per_invocation"</span></pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- Step 2: Build & sign -->
+  <section>
+    <div class="wrap">
+      <div class="step-no">Step 2 · Caller</div>
+      <h2>요청을 만들고 서명한다</h2>
+      <p class="desc">payload는 nonce에 바인딩되어 SHA-256으로 해시되고, 요청 봉투 전체가 caller 키로 서명됩니다. 그런 다음 URL scheme으로 인코딩해 대상 앱으로 전달합니다.</p>
+
+      <div class="code">
+        <div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="file">CallerFlow.swift</span></div>
+        <pre><span class="cm">// 2-1. 호출자 신원과 대상 능력</span>
+<span class="kw">let</span> caller = <span class="ty">MeshIdentity</span>(
+    appId: <span class="st">"app.hermeschat"</span>,
+    installId: <span class="st">"install-7f3a"</span>,
+    bundleId: <span class="st">"works.zep.HermesChat"</span>,
+    publicKeyId: <span class="st">"hermes-ed25519-2026"</span>
+)
+
+<span class="kw">let</span> target = <span class="ty">MeshCapability</span>(
+    targetBundleId: <span class="st">"works.zep.MintNotes"</span>,
+    capabilityId: <span class="st">"notes.append_note"</span>,
+    version: <span class="st">"1.0.0"</span>
+)
+
+<span class="cm">// 2-2. payload는 nonce에 바인딩되어 해시된다 (replay 방지)</span>
+<span class="kw">let</span> payload = [<span class="st">"title"</span>: <span class="st">"회의 메모"</span>, <span class="st">"body"</span>: <span class="st">"MeshKit 데모 결정사항"</span>]
+<span class="kw">let</span> nonce = <span class="ty">UUID</span>().uuidString
+<span class="kw">let</span> payloadHash = <span class="ty">MeshRequestPayloadHasher</span>.<span class="fn">hash</span>(<span class="pr">for</span>: payload, nonce: nonce)
+
+<span class="kw">let</span> request = <span class="ty">MeshRequest</span>(
+    requestId: <span class="ty">UUID</span>().uuidString,
+    caller: caller,
+    target: target,
+    payload: payload,
+    payloadHash: payloadHash,
+    nonce: nonce,
+    timestamp: <span class="ty">ISO8601DateFormatter</span>().<span class="fn">string</span>(<span class="pr">from</span>: .now),
+    signature: .unsigned   <span class="cm">// 서명 직전 placeholder</span>
+)
+
+<span class="cm">// 2-3. caller 키로 요청 봉투 전체를 서명</span>
+<span class="kw">let</span> signed = <span class="kw">try</span> <span class="ty">MeshSignedRequestCrypto</span>.<span class="fn">sign</span>(request, signer: hermesSigner)
+
+<span class="cm">// 2-4. URL scheme으로 인코딩해 대상 앱 열기</span>
+<span class="kw">let</span> encoded = <span class="kw">try</span> signed.<span class="fn">encodedForURLScheme</span>()
+<span class="kw">let</span> url = <span class="ty">URL</span>(string: <span class="st">"mintnotes://mesh?request=\(encoded)"</span>)!
+<span class="ty">UIApplication</span>.shared.<span class="fn">open</span>(url)</pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- Step 3: Target validate -->
+  <section>
+    <div class="wrap">
+      <div class="step-no">Step 3 · Target</div>
+      <h2>대상 앱이 검증하고 실행한다</h2>
+      <p class="desc">대상 앱은 자신의 경계 안에서 fail-closed로 검증합니다. 단 하나라도 어긋나면 실행은 일어나지 않습니다. <code style="font-family:'SF Mono',monospace;font-size:14px">validatePublicMesh</code>가 모든 게이트를 한 번에 통과시킵니다.</p>
+
+      <div class="code">
+        <div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="file">TargetHandler.swift</span></div>
+        <pre><span class="cm">// 3-1. 대상이 받아들이는 정책 — 누가, 무엇을 부를 수 있나</span>
+<span class="kw">let</span> policy = <span class="ty">MeshTargetPolicy</span>(
+    allowedCallerAppId: <span class="st">"app.hermeschat"</span>,
+    targetBundleId: <span class="st">"works.zep.MintNotes"</span>,
+    capabilityId: <span class="st">"notes.append_note"</span>
+)
+
+<span class="kw">let</span> trust = <span class="ty">MeshSenderTrust</span>(
+    callerAppId: <span class="st">"app.hermeschat"</span>,
+    callerBundleId: <span class="st">"works.zep.HermesChat"</span>,
+    teamId: <span class="st">"ABCDE12345"</span>,
+    requestSigningAlgorithm: <span class="st">"ed25519"</span>,
+    requestSigningKeyId: <span class="st">"hermes-ed25519-2026"</span>,
+    publicKey: hermesPublicKeyBase64
+)
+
+<span class="kw">let</span> invocation = <span class="ty">MeshInvocationPolicy</span>(
+    risk: <span class="st">"write:user_content"</span>,
+    consent: <span class="st">"per_invocation"</span>,
+    userApproved: <span class="kw">true</span>,            <span class="cm">// 사용자가 동의 게이트를 눌렀다</span>
+    registrySignatureVerified: <span class="kw">true</span>
+)
+
+<span class="cm">// 3-2. 모든 fail-closed 게이트를 한 번에 통과시킨다</span>
+<span class="kw">let</span> audit = <span class="kw">try</span> <span class="ty">MeshTarget</span>.<span class="fn">validatePublicMesh</span>(
+    request: incoming,
+    policy: policy,
+    trust: trust,
+    invocationPolicy: invocation,
+    observedCallerBundleId: openingApp.bundleId,
+    replayCache: replayCache
+)
+
+<span class="cm">// 3-3. 검증을 통과한 뒤에만 핸들러가 실행된다</span>
+<span class="kw">let</span> result = notesStore.<span class="fn">append</span>(
+    title: incoming.payload[<span class="st">"title"</span>] ?? <span class="st">""</span>,
+    body: incoming.payload[<span class="st">"body"</span>] ?? <span class="st">""</span>
+)</pre>
+      </div>
+
+      <div class="grid">
+        <div class="reject"><span class="x">✕</span><span><code>unsupportedCapability</code></span></div>
+        <div class="reject"><span class="x">✕</span><span><code>payloadHashMismatch</code></span></div>
+        <div class="reject"><span class="x">✕</span><span><code>staleTimestamp</code></span></div>
+        <div class="reject"><span class="x">✕</span><span><code>replayDetected</code></span></div>
+        <div class="reject"><span class="x">✕</span><span><code>consentRequired</code></span></div>
+        <div class="reject"><span class="x">✕</span><span><code>budgetExceeded</code></span></div>
+        <div class="reject"><span class="x">✕</span><span><code>signatureRequired</code></span></div>
+        <div class="reject"><span class="x">✕</span><span><code>observedCallerBundleMismatch</code></span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Step 4: Receipt -->
+  <section>
+    <div class="wrap">
+      <div class="step-no">Step 4 · Proof</div>
+      <h2>서명된 영수증으로 완료를 증명한다</h2>
+      <p class="desc">대상 앱은 실행 결과를 대상 키로 서명한 영수증으로 돌려줍니다. 호출자는 영수증이 원래 요청과 상관관계가 맞고 대상 서명이 유효할 때만 완료를 받아들입니다.</p>
+
+      <div class="code">
+        <div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="file">Receipt.swift</span></div>
+        <pre><span class="cm">// 4-1. 대상이 결과를 서명한 영수증으로 반환</span>
+<span class="kw">let</span> receipt = <span class="ty">MeshReceipt</span>(
+    receiptId: <span class="ty">UUID</span>().uuidString,
+    requestId: incoming.requestId,        <span class="cm">// 원 요청과 상관관계</span>
+    capabilityId: <span class="st">"notes.append_note"</span>,
+    targetAppId: <span class="st">"app.mintnotes"</span>,
+    targetBundleId: <span class="st">"works.zep.MintNotes"</span>,
+    requestPayloadHash: incoming.payloadHash,
+    status: <span class="st">"completed"</span>,
+    result: [<span class="st">"noteId"</span>: result.id],
+    nonce: incoming.nonce,
+    timestamp: <span class="ty">ISO8601DateFormatter</span>().<span class="fn">string</span>(<span class="pr">from</span>: .now),
+    signature: <span class="kw">try</span> mintSigner.<span class="fn">sign</span>(receipt)
+)
+
+<span class="cm">// 4-2. 호출자 측: 대상 서명이 유효할 때만 완료 수락</span>
+<span class="kw">try</span> <span class="ty">MeshReceipt</span>.<span class="fn">verify</span>(receipt, trust: mintReceiptTrust, against: signed)
+<span class="cm">// ✓ 통과 → 비로소 "완료"로 처리한다</span></pre>
+      </div>
+
+      <div class="receipt">
+        <div class="head"><span>✓</span><span>Receipt verified · completed</span></div>
+        <div class="body">
+          <div class="row"><span class="k">capability</span><span class="v">notes.append_note</span></div>
+          <div class="row"><span class="k">target</span><span class="v">works.zep.MintNotes</span></div>
+          <div class="row"><span class="k">requestId 상관관계</span><span class="v">✓ matched</span></div>
+          <div class="row"><span class="k">payloadHash</span><span class="v">✓ sha256 match</span></div>
+          <div class="row"><span class="k">target signature</span><span class="v">✓ ed25519 valid</span></div>
+          <div class="row"><span class="k">result.noteId</span><span class="v">note-9c41e2</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    MeshKit — App-to-App MCP trust layer for Open Calling Graph ·
+    <a href="https://q00.github.io/meshkit/">q00.github.io/meshkit</a><br />
+    <span style="opacity:0.7">예시 코드는 <code>meshkit-ios/Sources/MeshKit</code>의 공개 API를 기준으로 작성되었습니다.</span>
+  </footer>
+</body>
+</html>
