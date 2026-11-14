@@ -1,0 +1,43 @@
+# Android: built on JQ's home cluster (EDITH) self-hosted runners.
+#
+#   jvm-core  the pure-JVM trust layer (meshkit-core) on the Omarchy machine
+#   android   the Android library (meshkit-transport-intent, compileSdk 36) on the Windows
+#             machine's WSL, which has the Android SDK (edith deploy/ci/setup-android-sdk.sh)
+#
+# Self-hosted runners run whatever a workflow says, and this repository is public, so these
+# jobs never run for pull requests (a fork could change the workflow). Pushes need write
+# access to this repository, so any branch pushed here may use them.
+name: android
+on:
+  push:
+    paths: ["meshkit-android/**", ".github/workflows/android.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  jvm-core:
+    name: meshkit-core (JVM)
+    runs-on: [self-hosted, linux, omarchy]
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: meshkit-android
+    steps:
+      - uses: actions/checkout@v4
+      - run: java -version && gradle --version
+      - run: gradle --no-daemon :meshkit-core:test
+
+  android:
+    name: meshkit-transport-intent (Android SDK)
+    runs-on: [self-hosted, linux, android]
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: meshkit-android
+    steps:
+      - uses: actions/checkout@v4
+      - run: test -n "$ANDROID_HOME" && gradle --version
+      - run: gradle --no-daemon build
