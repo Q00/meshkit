@@ -1,0 +1,49 @@
+# iOS: the MeshKit Swift package and the three sample apps.
+#
+# iOS needs Xcode, which runs only on macOS (MeshKit also imports CryptoKit, which has no
+# Linux build), so these jobs use GitHub-hosted macOS runners. They are free for public
+# repositories and safe for pull requests. The Linux side of the cluster (omarchy runner)
+# covers the pure-JVM trust layer in android.yml.
+name: ios
+on:
+  push:
+    branches: [main]
+    paths: ["meshkit-ios/**", ".github/workflows/ios.yml"]
+  pull_request:
+    paths: ["meshkit-ios/**", ".github/workflows/ios.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  package:
+    name: MeshKit package (build + test)
+    runs-on: macos-15
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: meshkit-ios
+    steps:
+      - uses: actions/checkout@v4
+      - run: swift --version
+      - run: swift build
+      - run: swift test
+
+  apps:
+    name: Sample apps (iOS Simulator, unsigned)
+    runs-on: macos-15
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        scheme: [HermesChat, MintNotes, DailyMart]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build ${{ matrix.scheme }}
+        working-directory: meshkit-ios/Samples/iOSDemo
+        run: |
+          xcodebuild -project MeshKitiOSDemo.xcodeproj -scheme "${{ matrix.scheme }}" \
+            -destination 'generic/platform=iOS Simulator' -derivedDataPath "$RUNNER_TEMP/dd" \
+            CODE_SIGNING_ALLOWED=NO build | tail -n 40   # bash -eo pipefail: a failed build fails the step
