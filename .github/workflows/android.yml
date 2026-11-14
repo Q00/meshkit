@@ -28,7 +28,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: java -version && gradle --version
-      - run: gradle --no-daemon :meshkit-core:test
+      - run: gradle --no-daemon --stacktrace :meshkit-core:test
 
   android:
     name: meshkit-transport-intent (Android SDK)
@@ -40,4 +40,4 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: test -n "$ANDROID_HOME" && gradle --version
-      - run: gradle --no-daemon build
+      - run: gradle --no-daemon --stacktrace build
